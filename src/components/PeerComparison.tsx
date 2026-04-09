@@ -23,20 +23,28 @@ interface PeerData {
 function buildPeerSummary(peers: PeerData[], ticker: string): string {
   if (peers.length < 2) return "";
   const target = peers.find(p => p.is_target);
-  const others = peers.filter(p => !p.is_target && p.pe_ratio != null);
+  const others = peers.filter(p => !p.is_target);
   if (!target) return "";
 
   const parts: string[] = [];
+  const peOthers = others.filter(p => p.pe_ratio != null);
 
   // Valuation comparison
-  if (target.pe_ratio != null && others.length > 0) {
-    const avgPe = others.reduce((s, p) => s + (p.pe_ratio || 0), 0) / others.length;
-    if (target.pe_ratio > avgPe * 1.2) {
-      parts.push(`${ticker} trades at a premium (${target.pe_ratio.toFixed(1)}x PE) vs its peer average of ${avgPe.toFixed(1)}x — the market values it higher, likely due to stronger growth or margins.`);
-    } else if (target.pe_ratio < avgPe * 0.8) {
-      parts.push(`${ticker} looks undervalued at ${target.pe_ratio.toFixed(1)}x PE vs the peer average of ${avgPe.toFixed(1)}x — either a value opportunity or a reflection of weaker fundamentals.`);
+  if (target.pe_ratio != null && peOthers.length > 0) {
+    const avgPe = peOthers.reduce((s, p) => s + (p.pe_ratio || 0), 0) / peOthers.length;
+    const premiumPct = ((target.pe_ratio - avgPe) / avgPe * 100);
+
+    if (target.pe_ratio > avgPe * 1.3) {
+      parts.push(`${ticker} trades at a significant premium to its peer group: ${target.pe_ratio.toFixed(1)}x earnings versus the peer average of ${avgPe.toFixed(1)}x — a ${premiumPct.toFixed(0)}% premium. This suggests the market believes ${ticker} has a competitive advantage (superior growth, stronger margins, or better execution) that justifies paying more per dollar of earnings. However, premium-valued stocks are also more vulnerable to disappointment — any stumble in execution could trigger a sharp de-rating toward the peer average.`);
+    } else if (target.pe_ratio > avgPe * 1.1) {
+      parts.push(`${ticker}'s valuation of ${target.pe_ratio.toFixed(1)}x PE sits modestly above the peer group average of ${avgPe.toFixed(1)}x. The slight premium suggests the market views ${ticker} as a higher-quality name in its peer group, but the gap is narrow enough that it could close quickly with a strong quarter from a competitor or a miss from ${ticker}.`);
+    } else if (target.pe_ratio < avgPe * 0.7) {
+      const discountPct = Math.abs(premiumPct);
+      parts.push(`${ticker} trades at a notable discount to peers: ${target.pe_ratio.toFixed(1)}x earnings versus the peer average of ${avgPe.toFixed(1)}x — a ${discountPct.toFixed(0)}% discount. This could represent a genuine value opportunity if the business fundamentals are comparable to peers, or it could reflect the market pricing in specific risks (slowing growth, competitive threats, management concerns) that justify the lower multiple. The key is whether the discount is temporary or structural.`);
+    } else if (target.pe_ratio < avgPe * 0.9) {
+      parts.push(`${ticker}'s ${target.pe_ratio.toFixed(1)}x PE is slightly below the peer average of ${avgPe.toFixed(1)}x. A modest discount could indicate the market sees slightly less growth potential, or it could be a minor inefficiency — this is close enough to fair value relative to peers that the gap may not be meaningful.`);
     } else {
-      parts.push(`${ticker}'s valuation (${target.pe_ratio.toFixed(1)}x PE) is in line with its peer group average of ${avgPe.toFixed(1)}x.`);
+      parts.push(`${ticker}'s valuation of ${target.pe_ratio.toFixed(1)}x PE is closely aligned with the peer group average of ${avgPe.toFixed(1)}x, suggesting the market views it as fairly valued within its competitive set. At this level, relative performance will be driven by execution — whoever delivers the best earnings surprises will see the most multiple expansion.`);
     }
   }
 
@@ -45,13 +53,16 @@ function buildPeerSummary(peers: PeerData[], ticker: string): string {
     const growthPeers = others.filter(p => p.revenue_growth != null);
     if (growthPeers.length > 0) {
       const avgGrowth = growthPeers.reduce((s, p) => s + (p.revenue_growth || 0), 0) / growthPeers.length;
-      const fastest = [...peers].filter(p => p.revenue_growth != null).sort((a, b) => (b.revenue_growth || 0) - (a.revenue_growth || 0))[0];
+      const sorted = [...peers].filter(p => p.revenue_growth != null).sort((a, b) => (b.revenue_growth || 0) - (a.revenue_growth || 0));
+      const rank = sorted.findIndex(p => p.ticker === ticker) + 1;
+      const fastest = sorted[0];
+
       if (fastest && fastest.ticker === ticker) {
-        parts.push(`It leads the peer group in revenue growth at ${target.revenue_growth.toFixed(1)}%.`);
+        parts.push(`${ticker} leads the entire peer group in revenue growth at ${target.revenue_growth.toFixed(1)}%, outpacing the peer average of ${avgGrowth.toFixed(1)}%. Being the fastest grower in a competitive group is a powerful position — it typically leads to market share gains and justifies premium valuations. Investors should monitor whether this growth is sustainable or driven by one-time factors.`);
       } else if (target.revenue_growth > avgGrowth) {
-        parts.push(`Growth of ${target.revenue_growth.toFixed(1)}% outpaces the peer average of ${avgGrowth.toFixed(1)}%.`);
+        parts.push(`Revenue growth of ${target.revenue_growth.toFixed(1)}% ranks #${rank} among ${sorted.length} peers and exceeds the group average of ${avgGrowth.toFixed(1)}%. ${fastest ? `The growth leader is ${fastest.ticker} at ${fastest.revenue_growth?.toFixed(1)}%.` : ""} ${ticker}'s above-average growth while not leading the pack suggests solid execution with room to accelerate if market conditions improve.`);
       } else {
-        parts.push(`Revenue growth of ${target.revenue_growth.toFixed(1)}% trails the peer average of ${avgGrowth.toFixed(1)}% — it's losing ground competitively.`);
+        parts.push(`${ticker}'s revenue growth of ${target.revenue_growth.toFixed(1)}% trails the peer average of ${avgGrowth.toFixed(1)}%, ranking #${rank} out of ${sorted.length} peers. Underperforming peers on growth is a concern because it suggests the company may be losing competitive positioning or market share. ${fastest ? `The group leader, ${fastest.ticker}, is growing at ${fastest.revenue_growth?.toFixed(1)}%, highlighting the gap.` : ""}`);
       }
     }
   }
@@ -60,9 +71,30 @@ function buildPeerSummary(peers: PeerData[], ticker: string): string {
   if (target.operating_margin != null) {
     const marginPeers = others.filter(p => p.operating_margin != null);
     if (marginPeers.length > 0) {
-      const bestMarginPeer = [...peers].filter(p => p.operating_margin != null).sort((a, b) => (b.operating_margin || 0) - (a.operating_margin || 0))[0];
-      if (bestMarginPeer && bestMarginPeer.ticker === ticker) {
-        parts.push(`${ticker} has the highest operating margin in the group at ${target.operating_margin.toFixed(1)}% — a clear efficiency leader.`);
+      const avgMargin = marginPeers.reduce((s, p) => s + (p.operating_margin || 0), 0) / marginPeers.length;
+      const sortedMargin = [...peers].filter(p => p.operating_margin != null).sort((a, b) => (b.operating_margin || 0) - (a.operating_margin || 0));
+      const marginRank = sortedMargin.findIndex(p => p.ticker === ticker) + 1;
+
+      if (marginRank === 1) {
+        parts.push(`${ticker} boasts the highest operating margin in the peer group at ${target.operating_margin.toFixed(1)}% versus the average of ${avgMargin.toFixed(1)}%. This margin leadership typically indicates a structural competitive advantage — whether from scale economics, proprietary technology, network effects, or pricing power. Companies with best-in-class margins tend to be more resilient during economic downturns and generate superior free cash flow.`);
+      } else if (target.operating_margin > avgMargin) {
+        parts.push(`Operating margin of ${target.operating_margin.toFixed(1)}% is above the peer average of ${avgMargin.toFixed(1)}%, ranking #${marginRank} in the group. Above-average profitability suggests the company has some degree of competitive differentiation or operational efficiency that peers have not matched.`);
+      } else if (target.operating_margin < avgMargin * 0.5 && avgMargin > 0) {
+        parts.push(`Operating margin of ${target.operating_margin.toFixed(1)}% significantly lags the peer average of ${avgMargin.toFixed(1)}%. This margin gap could indicate the company is investing heavily for future growth (sacrificing near-term profitability), or it could reflect a weaker competitive position that makes it harder to charge premium prices or control costs.`);
+      }
+    }
+  }
+
+  // RSI / momentum comparison
+  if (target.rsi != null) {
+    const rsiPeers = others.filter(p => p.rsi != null);
+    if (rsiPeers.length > 0) {
+      const highRsiPeers = rsiPeers.filter(p => (p.rsi || 0) > 65);
+      const lowRsiPeers = rsiPeers.filter(p => (p.rsi || 0) < 35);
+      if (target.rsi > 65 && highRsiPeers.length >= 2) {
+        parts.push(`Both ${ticker} and several peers show overbought RSI readings, suggesting the entire sector may be extended and due for a pullback rather than this being ${ticker}-specific.`);
+      } else if (target.rsi < 35 && lowRsiPeers.length === 0) {
+        parts.push(`${ticker}'s oversold RSI (${target.rsi.toFixed(0)}) stands out from its peer group, where no other stock is below 35. This company-specific weakness (rather than sector-wide selling) may warrant investigation into ${ticker}-specific catalysts driving the underperformance.`);
       }
     }
   }
@@ -180,7 +212,10 @@ export default function PeerComparison({ ticker }: { ticker: string }) {
       {/* Summary */}
       {peers.length >= 2 && (
         <div className="mt-3 pt-3 border-t border-border/50">
-          <p className="text-[11px] text-muted leading-relaxed">{buildPeerSummary(peers, ticker)}</p>
+          <div className="bg-subtle/50 border-l-2 border-accent/30 pl-3 pr-3 py-2.5">
+            <div className="text-accent/60 text-[9px] font-semibold tracking-[0.15em] mb-1.5">AI ANALYSIS</div>
+            <p className="text-[11px] text-muted leading-[1.7]">{buildPeerSummary(peers, ticker)}</p>
+          </div>
         </div>
       )}
     </div>

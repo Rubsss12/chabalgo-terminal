@@ -42,32 +42,42 @@ function buildInsiderSummary(summary: Summary | null, transactions: Transaction[
   const totalBuys = summary.total_buy_value;
   const totalSells = summary.total_sell_value;
   const ratio = totalSells > 0 && totalBuys > 0 ? totalSells / totalBuys : 0;
+  const txCount = summary.total_transactions;
 
   if (totalBuys > 0 && totalSells === 0) {
-    parts.push(`Insiders have been exclusively buying ${ticker} — $${formatLargeNumber(totalBuys)} in purchases with zero sells. This is a strong bullish signal from those who know the company best.`);
+    parts.push(`Over the past 6 months, insiders have been exclusively buying ${ticker} — $${formatLargeNumber(totalBuys)} in open-market purchases across ${txCount} transaction${txCount > 1 ? "s" : ""} with zero sells. This is one of the strongest bullish signals available in equity analysis. When executives and directors spend their own money buying shares — knowing full well the regulatory scrutiny and filing requirements involved — it signals genuine confidence in the company's future. Academic research consistently shows that insider buying clusters precede above-average stock returns over the following 6-12 months.`);
   } else if (totalSells > 0 && totalBuys === 0) {
-    if (totalSells > 10e6) {
-      parts.push(`Heavy insider selling: $${formatLargeNumber(totalSells)} in sales with no insider buys. While insiders sell for many reasons (diversification, taxes), the magnitude here warrants attention.`);
+    if (totalSells > 50e6) {
+      parts.push(`Significant insider selling: $${formatLargeNumber(totalSells)} in total sales over ${txCount} transactions with no insider buying to offset. While it's important to remember that insiders sell for many legitimate reasons — diversification, taxes, estate planning, home purchases — selling of this magnitude with zero offsetting buys is worth monitoring. The key distinction is between planned 10b5-1 sales (systematic, pre-scheduled) and discretionary sales (which may reflect the insider's view on valuation). Without buying to counterbalance, the overall insider sentiment picture leans bearish.`);
+    } else if (totalSells > 10e6) {
+      parts.push(`Insiders have been net sellers with $${formatLargeNumber(totalSells)} in sales and no buys in the period. While insider selling alone is not a reliable bearish signal (executives routinely sell for compensation diversification, tax obligations, and liquidity needs), the absence of any buying suggests no insider felt the stock was undervalued enough to commit personal capital. This is more of a neutral-to-cautious signal than an outright red flag.`);
     } else {
-      parts.push(`Insiders have been net sellers ($${formatLargeNumber(totalSells)}). Routine selling for diversification is common, especially after vesting events.`);
+      parts.push(`Modest insider selling of $${formatLargeNumber(totalSells)} across ${txCount} transaction${txCount > 1 ? "s" : ""}. This level of selling is generally considered routine — it's common for executives at growth companies to regularly sell small portions of vested equity compensation. The dollar amounts here don't suggest any urgency or large-scale liquidation by management.`);
     }
   } else if (ratio > 10) {
-    parts.push(`Insider sells outpace buys by ${ratio.toFixed(0)}:1 ($${formatLargeNumber(totalSells)} sold vs $${formatLargeNumber(totalBuys)} bought). The skew is notable but may reflect normal compensation-related activity.`);
+    parts.push(`Insider selling outpaces buying by a striking ${ratio.toFixed(0)}:1 ratio — $${formatLargeNumber(totalSells)} in sales versus just $${formatLargeNumber(totalBuys)} in purchases. While the extreme skew looks alarming at first glance, it's important to contextualize this: most large-cap companies see sell-heavy insider activity because executive compensation is heavily equity-based, creating a natural flow of shares being sold as they vest. The small amount of buying is actually more meaningful than the large amount of selling — it shows at least some insiders see value at current prices.`);
   } else if (ratio > 3) {
-    parts.push(`More insider selling than buying (${ratio.toFixed(1)}:1 ratio). Not unusual for a growing company where equity compensation is a major part of pay.`);
-  } else if (totalBuys > totalSells) {
-    parts.push(`Net insider buying is a positive sign — insiders have purchased more than they've sold, signaling confidence in the stock's direction.`);
+    parts.push(`Insider selling exceeds buying by a ${ratio.toFixed(1)}:1 ratio ($${formatLargeNumber(totalSells)} sold vs $${formatLargeNumber(totalBuys)} bought). This is a common pattern at growing technology and healthcare companies where equity compensation represents a significant portion of total pay. The buying activity, while smaller, is the more informative data point — insiders choose to buy, but they're often required to sell for diversification and tax purposes.`);
+  } else if (totalBuys > totalSells && totalBuys > 0) {
+    const netBuy = totalBuys - totalSells;
+    parts.push(`Net insider buying of $${formatLargeNumber(netBuy)} is a positive signal. When insiders collectively purchase more than they sell, it indicates that those with the deepest knowledge of the company's operations, pipeline, and financial outlook believe the stock is undervalued. This is especially meaningful if the buying comes from C-suite executives or board members rather than lower-level officers, as senior leadership has the most visibility into the company's trajectory.`);
   }
 
   // Notable individuals
   if (summary.by_insider.length > 0) {
     const biggestSeller = summary.by_insider.reduce((a, b) => b.sell_value > a.sell_value ? b : a);
-    if (biggestSeller.sell_value > 1e6) {
-      parts.push(`Largest seller: ${biggestSeller.name} ($${formatLargeNumber(biggestSeller.sell_value)}).`);
-    }
     const biggestBuyer = summary.by_insider.reduce((a, b) => b.buy_value > a.buy_value ? b : a);
-    if (biggestBuyer.buy_value > 100000) {
-      parts.push(`Largest buyer: ${biggestBuyer.name} ($${formatLargeNumber(biggestBuyer.buy_value)}).`);
+
+    if (biggestBuyer.buy_value > 500000) {
+      parts.push(`The largest buyer was ${biggestBuyer.name}, who purchased $${formatLargeNumber(biggestBuyer.buy_value)} worth of shares. Purchases above $500K are considered "high-conviction" buys — the insider is making a meaningful financial bet on the stock, not just a symbolic gesture.`);
+    } else if (biggestBuyer.buy_value > 100000) {
+      parts.push(`Notable buyer: ${biggestBuyer.name} purchased $${formatLargeNumber(biggestBuyer.buy_value)} in shares.`);
+    }
+
+    if (biggestSeller.sell_value > 5e6) {
+      parts.push(`The largest seller was ${biggestSeller.name} with $${formatLargeNumber(biggestSeller.sell_value)} in sales. Large individual sells from a single insider can be concerning if they represent a significant portion of that insider's total holdings — check SEC Form 4 filings for the remaining ownership percentage.`);
+    } else if (biggestSeller.sell_value > 1e6) {
+      parts.push(`Largest seller: ${biggestSeller.name} ($${formatLargeNumber(biggestSeller.sell_value)}). This is a moderate-sized sale that could easily be part of a routine diversification plan.`);
     }
   }
 
@@ -226,9 +236,12 @@ export default function InsiderTransactions({ ticker }: { ticker: string }) {
 
           {/* Summary */}
           <div className="mt-3 pt-3 border-t border-border/50">
-            <p className="text-[11px] text-muted leading-relaxed">
-              {buildInsiderSummary(summary, transactions, ticker)}
-            </p>
+            <div className="bg-subtle/50 border-l-2 border-accent/30 pl-3 pr-3 py-2.5">
+              <div className="text-accent/60 text-[9px] font-semibold tracking-[0.15em] mb-1.5">AI ANALYSIS</div>
+              <p className="text-[11px] text-muted leading-[1.7]">
+                {buildInsiderSummary(summary, transactions, ticker)}
+              </p>
+            </div>
           </div>
         </>
       )}

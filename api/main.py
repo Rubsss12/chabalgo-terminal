@@ -1846,6 +1846,328 @@ def short_term_verdict(ticker: str):
     })
 
 
+# =============================================
+# 6-MONTH VISION (CATALYST-DRIVEN)
+# =============================================
+
+# Sector catalysts — events that could drive sector-wide re-ratings
+SECTOR_CATALYSTS = {
+    "Space & Defense Tech": [
+        {"event": "SpaceX / Starlink IPO", "date": "H2 2026", "impact": "very_high", "description": "Le plus gros IPO de l'histoire créera une vague d'intérêt massif pour tout le secteur spatial. Les comparables seront revalorisés par effet d'entraînement."},
+        {"event": "Contrats Artemis NASA", "date": "2026", "impact": "high", "description": "Les attributions de contrats Artemis III/IV bénéficieront aux sous-traitants et partenaires du programme lunaire."},
+        {"event": "Expansion constellation Starlink", "date": "Ongoing", "impact": "medium", "description": "La demande croissante en internet par satellite pousse les commandes de satellites et de lanceurs."},
+    ],
+    "Photonics & Optical": [
+        {"event": "Déploiement 800G/1.6T Datacenter", "date": "2026-2027", "impact": "very_high", "description": "La transition vers les transceivers 800G et 1.6T pour les datacenters IA crée une demande explosive. Chaque cluster GPU nécessite des milliers de composants optiques."},
+        {"event": "Expansion IA & GPU clusters", "date": "Ongoing", "impact": "very_high", "description": "Chaque dollar dépensé en GPU Nvidia génère ~$0.30-0.50 en composants optiques. Le marché des transceivers IA devrait tripler d'ici 2027."},
+        {"event": "Consolidation sectorielle", "date": "2026", "impact": "medium", "description": "Des M&A sont attendues dans le secteur (Coherent a acquis II-VI, Lumentum a acquis NeoPhotonics). Les petits acteurs comme AAOI sont des cibles potentielles."},
+    ],
+    "AI Infrastructure": [
+        {"event": "OpenAI / Anthropic IPOs", "date": "H2 2026", "impact": "high", "description": "Les IPOs des leaders IA valideront les valorisations du secteur et augmenteront l'attention des investisseurs retail."},
+        {"event": "Dépenses IA hyperscalers", "date": "Ongoing", "impact": "very_high", "description": "Microsoft, Google, Amazon et Meta dépenseront $200B+ en infrastructure IA en 2026. Les fournisseurs de hardware et software bénéficient directement."},
+    ],
+    "Cybersecurity AI": [
+        {"event": "Régulations IA & cybersécurité", "date": "2026", "impact": "high", "description": "Les nouvelles régulations sur la sécurité de l'IA et la protection des données augmentent les budgets cybersécurité des entreprises."},
+    ],
+    "Fintech Infrastructure": [
+        {"event": "Stripe / Klarna IPOs", "date": "H1-H2 2026", "impact": "high", "description": "Les IPOs fintech fixeront de nouveaux benchmarks de valorisation pour les paiements digitaux et le BNPL."},
+    ],
+    "Robotics & Automation": [
+        {"event": "Adoption robots chirurgicaux", "date": "Ongoing", "impact": "medium", "description": "La pénétration des robots chirurgicaux accélère dans les marchés émergents."},
+    ],
+    "Clean Energy & Grid": [
+        {"event": "IRA & subventions énergie", "date": "2026", "impact": "medium", "description": "Les crédits d'impôt de l'Inflation Reduction Act continuent de soutenir les installations solaires et les bornes de recharge."},
+    ],
+    "Synthetic Biology & Genomics": [
+        {"event": "Approbations FDA thérapies géniques", "date": "2026-2027", "impact": "high", "description": "Plusieurs thérapies CRISPR et base editing sont en phase III avec des résultats attendus en 2026."},
+    ],
+}
+
+
+@app.get("/vision/{ticker}")
+def six_month_vision(ticker: str):
+    """
+    6-month forward-looking analysis factoring in catalysts, sector momentum,
+    comparable valuations, and event-driven potential.
+    """
+    ticker = resolve_ticker(ticker)
+
+    # Gather data
+    fundamentals = get_fundamentals(ticker)
+    technicals = get_technicals(ticker)
+    profile_data = get_company_profile(ticker)
+
+    if not profile_data or not profile_data.get("name"):
+        raise HTTPException(status_code=404, detail=f"Cannot analyze {ticker}")
+
+    # Determine sector
+    stock_sector = None
+    for sector, tickers_list in SCREENER_SECTORS.items():
+        if ticker in tickers_list:
+            stock_sector = sector
+            break
+
+    # If not in screener, try to infer from industry
+    if not stock_sector:
+        industry = (profile_data.get("industry") or "").lower()
+        if any(k in industry for k in ["semiconductor", "optical", "photon", "laser"]):
+            stock_sector = "Photonics & Optical"
+        elif any(k in industry for k in ["aerospace", "space", "satellite", "defense"]):
+            stock_sector = "Space & Defense Tech"
+        elif any(k in industry for k in ["cyber", "security"]):
+            stock_sector = "Cybersecurity AI"
+        elif any(k in industry for k in ["fintech", "payment", "bank"]):
+            stock_sector = "Fintech Infrastructure"
+        elif any(k in industry for k in ["software", "cloud", "ai", "artificial"]):
+            stock_sector = "AI Infrastructure"
+
+    # Get catalysts for the sector
+    catalysts = SECTOR_CATALYSTS.get(stock_sector, []) if stock_sector else []
+
+    # =============================================
+    # COMPUTE 6-MONTH SCORES
+    # =============================================
+
+    factors = []
+
+    # 1. MOMENTUM TRAJECTORY (weight: 20)
+    momentum_score = 50
+    momentum_detail = {}
+    try:
+        t = yf.Ticker(ticker)
+        hist = t.history(period="6mo")
+        if not hist.empty and len(hist) > 20:
+            closes = hist["Close"].values
+            # 1-month return
+            ret_1m = ((closes[-1] - closes[-22]) / closes[-22] * 100) if len(closes) > 22 else 0
+            # 3-month return
+            ret_3m = ((closes[-1] - closes[-66]) / closes[-66] * 100) if len(closes) > 66 else 0
+            # 6-month return
+            ret_6m = ((closes[-1] - closes[0]) / closes[0] * 100)
+            # Acceleration: is momentum increasing?
+            acceleration = ret_1m - (ret_3m / 3) if ret_3m else 0
+
+            momentum_detail = {
+                "return_1m": round(ret_1m, 1),
+                "return_3m": round(ret_3m, 1),
+                "return_6m": round(ret_6m, 1),
+                "acceleration": round(acceleration, 1),
+            }
+
+            if ret_1m > 15 and ret_3m > 30:
+                momentum_score = 85
+            elif ret_1m > 5 and ret_3m > 15:
+                momentum_score = 72
+            elif ret_1m > 0 and ret_3m > 0:
+                momentum_score = 60
+            elif ret_1m < -10:
+                momentum_score = 30
+            elif ret_1m < -5:
+                momentum_score = 40
+            else:
+                momentum_score = 50
+
+            # Boost for accelerating momentum
+            if acceleration > 5:
+                momentum_score = min(95, momentum_score + 10)
+    except Exception:
+        pass
+
+    factors.append({
+        "name": "Trajectoire Momentum",
+        "weight": 20,
+        "score": momentum_score,
+        "detail": momentum_detail,
+    })
+
+    # 2. CATALYST PROXIMITY (weight: 25)
+    catalyst_score = 40  # neutral if no catalysts
+    catalyst_detail = []
+    if catalysts:
+        high_impact_count = sum(1 for c in catalysts if c["impact"] in ("very_high", "high"))
+        if high_impact_count >= 2:
+            catalyst_score = 85
+        elif high_impact_count >= 1:
+            catalyst_score = 70
+        else:
+            catalyst_score = 55
+        catalyst_detail = catalysts
+
+    factors.append({
+        "name": "Catalyseurs Sectoriels",
+        "weight": 25,
+        "score": catalyst_score,
+        "detail": catalyst_detail,
+    })
+
+    # 3. REVENUE GROWTH TRAJECTORY (weight: 20)
+    growth_score = 50
+    growth_detail = {}
+    rev_growth = fundamentals.get("revenue_growth_yoy")
+    if rev_growth is not None:
+        growth_detail["revenue_growth_yoy"] = rev_growth
+        if rev_growth > 50:
+            growth_score = 90
+            growth_detail["assessment"] = "Hyper-croissance — la demande explose"
+        elif rev_growth > 25:
+            growth_score = 75
+            growth_detail["assessment"] = "Forte croissance — le business scale rapidement"
+        elif rev_growth > 10:
+            growth_score = 60
+            growth_detail["assessment"] = "Croissance solide — expansion régulière"
+        elif rev_growth > 0:
+            growth_score = 45
+            growth_detail["assessment"] = "Croissance modeste — pas de catalyseur de revenus évident"
+        else:
+            growth_score = 25
+            growth_detail["assessment"] = "Revenus en déclin — risque fondamental"
+
+    factors.append({
+        "name": "Trajectoire Revenus",
+        "weight": 20,
+        "score": growth_score,
+        "detail": growth_detail,
+    })
+
+    # 4. TECHNICAL SETUP (weight: 15)
+    tech_score = 50
+    tech_detail = {}
+    rsi = technicals.get("rsi")
+    ma50 = technicals.get("ma50")
+    ma200 = technicals.get("ma200")
+    if rsi is not None:
+        tech_detail["rsi"] = rsi
+        tech_detail["ma50_pos"] = technicals.get("price_vs_ma50")
+        tech_detail["ma200_pos"] = technicals.get("price_vs_ma200")
+
+        if technicals.get("price_vs_ma50") == "above" and technicals.get("price_vs_ma200") == "above":
+            tech_score = 72
+            if rsi > 70:
+                tech_score = 60  # overbought risk
+                tech_detail["warning"] = "RSI surachat — risque de pullback court terme"
+            elif 40 < rsi < 60:
+                tech_score = 78  # ideal zone
+        elif technicals.get("price_vs_ma50") == "below" and technicals.get("price_vs_ma200") == "below":
+            tech_score = 30
+        elif technicals.get("price_vs_ma50") == "below":
+            tech_score = 45  # pullback within uptrend
+        else:
+            tech_score = 55
+
+    factors.append({
+        "name": "Setup Technique",
+        "weight": 15,
+        "score": tech_score,
+        "detail": tech_detail,
+    })
+
+    # 5. VALUATION RISK / REWARD (weight: 20)
+    val_score = 50
+    val_detail = {}
+
+    pe = fundamentals.get("pe_ratio")
+    fwd_pe = fundamentals.get("forward_pe")
+    if pe is not None and fwd_pe is not None and fwd_pe > 0:
+        pe_compression = ((pe - fwd_pe) / pe * 100) if pe > 0 else 0
+        val_detail["pe"] = pe
+        val_detail["forward_pe"] = fwd_pe
+        val_detail["pe_compression"] = round(pe_compression, 1)
+
+        if pe_compression > 20:
+            val_score = 75
+            val_detail["assessment"] = "Forte compression PE attendue — les earnings rattrapent la valorisation"
+        elif pe_compression > 5:
+            val_score = 62
+            val_detail["assessment"] = "Compression PE modérée — valorisation en amélioration"
+        elif pe < 20:
+            val_score = 65
+            val_detail["assessment"] = "Valorisation raisonnable — marge de sécurité présente"
+        else:
+            val_score = 45
+            val_detail["assessment"] = "Valorisation tendue — peu de marge d'erreur"
+    elif pe is None and rev_growth is not None and rev_growth > 30:
+        # Pre-profit high growth (like FLY, PL, ASTS)
+        val_score = 55
+        val_detail["assessment"] = "Pre-profit mais forte croissance — valorisation basée sur le potentiel et les catalyseurs sectoriels"
+        val_detail["note"] = "Pour les entreprises pre-profit dans des secteurs à catalyseur (SpaceX IPO, expansion IA), la valorisation se justifie par le momentum sectoriel plutôt que par les multiples traditionnels"
+    elif pe is None:
+        val_score = 40
+        val_detail["assessment"] = "Pas de PE — entreprise non-profitable, valorisation spéculative"
+
+    factors.append({
+        "name": "Risque/Rendement Valorisation",
+        "weight": 20,
+        "score": val_score,
+        "detail": val_detail,
+    })
+
+    # =============================================
+    # COMPOSITE SCORE
+    # =============================================
+    total_weight = sum(f["weight"] for f in factors)
+    composite = sum(f["score"] * f["weight"] for f in factors) / max(total_weight, 1)
+
+    # Determine verdict
+    if composite >= 75:
+        verdict_label = "STRONG CONVICTION"
+        verdict_color = "green"
+        outlook = "Le momentum, les catalyseurs sectoriels et la trajectoire de croissance convergent positivement. Les 6 prochains mois offrent un potentiel de hausse significatif."
+    elif composite >= 62:
+        verdict_label = "FAVORABLE"
+        verdict_color = "green"
+        outlook = "Les conditions sont globalement positives avec des catalyseurs identifiés. Le risque/rendement penche en faveur de l'investisseur sur un horizon 6 mois."
+    elif composite >= 50:
+        verdict_label = "NEUTRE / ATTENDRE"
+        verdict_color = "yellow"
+        outlook = "Signaux mixtes. Des catalyseurs existent mais le timing ou la valorisation ne sont pas optimaux. Un pullback pourrait offrir un meilleur point d'entrée."
+    elif composite >= 38:
+        verdict_label = "PRUDENCE"
+        verdict_color = "yellow"
+        outlook = "Plus de risques que d'opportunités à court-moyen terme. Les catalyseurs sont insuffisants pour compenser les faiblesses fondamentales ou techniques."
+    else:
+        verdict_label = "ÉVITER"
+        verdict_color = "red"
+        outlook = "Les conditions sont défavorables sur un horizon 6 mois. Momentum négatif, pas de catalyseurs clairs, et/ou valorisation non justifiée."
+
+    # Build entry analysis
+    entry_analysis = ""
+    if momentum_detail.get("return_3m", 0) > 50:
+        entry_analysis = f"Le stock a déjà pris +{momentum_detail['return_3m']}% en 3 mois — l'entrée est plus coûteuse qu'il y a un trimestre. Cependant, "
+    elif momentum_detail.get("return_3m", 0) > 20:
+        entry_analysis = f"Hausse de +{momentum_detail['return_3m']}% sur 3 mois — le momentum est établi. "
+
+    if catalysts:
+        high_catalysts = [c for c in catalysts if c["impact"] in ("very_high", "high")]
+        if high_catalysts:
+            entry_analysis += f"Les catalyseurs majeurs à venir ({', '.join(c['event'] for c in high_catalysts[:2])}) peuvent amplifier le mouvement. "
+            if momentum_detail.get("return_3m", 0) > 30:
+                entry_analysis += "Même si l'entrée est plus chère qu'il y a quelques mois, le potentiel haussier lié aux catalyseurs sectoriels peut encore doubler la mise. Un investisseur avec un horizon de 6-12 mois et une tolérance au risque élevée peut considérer une position, idéalement en scaling progressif plutôt qu'en all-in."
+            else:
+                entry_analysis += "Le positionnement avant ces événements offre un avantage asymétrique — le downside est limité par le momentum sectoriel tandis que l'upside est amplifié par l'effet catalyseur."
+
+    if not entry_analysis:
+        if composite >= 62:
+            entry_analysis = "Les conditions sont favorables pour initier une position sur cet horizon. Privilégiez un scaling progressif pour optimiser votre prix moyen d'entrée."
+        elif composite >= 50:
+            entry_analysis = "L'entrée est possible mais pas urgente. Attendez un pullback technique vers les supports (MA50 ou -10% des niveaux actuels) pour un meilleur point d'entrée."
+        else:
+            entry_analysis = "Les conditions ne sont pas optimales pour une entrée. Attendez une amélioration du momentum ou un catalyseur clair avant de vous positionner."
+
+    return _sanitize({
+        "ticker": ticker,
+        "name": profile_data.get("name", ticker),
+        "sector": stock_sector or "Non classifié",
+        "horizon": "6 mois",
+        "composite_score": round(composite, 1),
+        "verdict": verdict_label,
+        "verdict_color": verdict_color,
+        "outlook": outlook,
+        "entry_analysis": entry_analysis,
+        "factors": factors,
+        "catalysts": catalysts,
+    })
+
+
 @app.get("/portfolio")
 def get_portfolio():
     return {"positions": list(portfolio.values())}
@@ -2132,25 +2454,56 @@ def earnings_data(ticker: str):
     }
 
 
+# Manual peer overrides for sectors where Finnhub returns bad peers
+PEER_OVERRIDES = {
+    # Photonics / Optical
+    "AAOI": ["LITE", "COHR", "IIVI", "VIAV", "CIEN"],
+    "LITE": ["AAOI", "COHR", "VIAV", "CIEN", "FNSR"],
+    "COHR": ["LITE", "AAOI", "VIAV", "IIVI", "CIEN"],
+    "VIAV": ["LITE", "COHR", "AAOI", "CIEN", "IIVI"],
+    "CIEN": ["LITE", "AAOI", "COHR", "VIAV", "ANET"],
+    # Space & Satellites
+    "PL": ["RKLB", "ASTS", "LUNR", "BKSY", "MNTS"],
+    "RKLB": ["PL", "ASTS", "LUNR", "BKSY", "ASTR"],
+    "ASTS": ["PL", "RKLB", "LUNR", "BKSY", "GSAT"],
+    "LUNR": ["PL", "RKLB", "ASTS", "BKSY", "MNTS"],
+    "BKSY": ["PL", "RKLB", "ASTS", "LUNR", "MNTS"],
+    "FLY": ["RKLB", "PL", "ASTS", "LUNR", "BKSY"],
+    # Quantum Computing
+    "IONQ": ["RGTI", "QBTS", "QUBT", "ARQQ"],
+    "RGTI": ["IONQ", "QBTS", "QUBT", "ARQQ"],
+    "QBTS": ["IONQ", "RGTI", "QUBT", "ARQQ"],
+    # Robotics
+    "ISRG": ["TER", "IRBT", "AVAV", "PATH"],
+    # Cybersecurity
+    "CRWD": ["S", "ZS", "PANW", "FTNT", "RBRK"],
+    "S": ["CRWD", "ZS", "PANW", "FTNT", "RBRK"],
+}
+
+
 @app.get("/peers/{ticker}")
 def peer_comparison(ticker: str):
     """Get peer comparison data."""
     ticker = resolve_ticker(ticker)
 
-    # Get peers from Finnhub
-    peers_data = finnhub_get("stock/peers", {"symbol": ticker})
-    if not peers_data or not isinstance(peers_data, list):
-        return {"ticker": ticker, "peers": []}
+    # Check manual overrides first
+    if ticker in PEER_OVERRIDES:
+        peers_list = PEER_OVERRIDES[ticker][:5]
+    else:
+        # Get peers from Finnhub
+        peers_data = finnhub_get("stock/peers", {"symbol": ticker})
+        if not peers_data or not isinstance(peers_data, list):
+            return {"ticker": ticker, "peers": []}
 
-    # Remove self and duplicates, limit to 5 peers
-    peers_list = []
-    seen = {ticker}
-    for p in peers_data:
-        if p not in seen and "." not in p:
-            seen.add(p)
-            peers_list.append(p)
-        if len(peers_list) >= 5:
-            break
+        # Remove self and duplicates, limit to 5 peers
+        peers_list = []
+        seen = {ticker}
+        for p in peers_data:
+            if p not in seen and "." not in p:
+                seen.add(p)
+                peers_list.append(p)
+            if len(peers_list) >= 5:
+                break
 
     # Fetch key metrics for each peer (and self)
     all_tickers = [ticker] + peers_list
@@ -2640,17 +2993,21 @@ SCREENER_SECTORS = {
         "ISRG", "TER", "IRBT", "BRKS", "NOVT", "OUST", "AEVA", "LAZR",
         "ACHR", "JOBY",
     ],
+    "Photonics & Optical": [
+        "AAOI", "LITE", "COHR", "VIAV", "CIEN", "IIVI", "CALX", "ANET",
+        "FNSR", "MXL",
+    ],
     "Edge Computing & IoT": [
-        "NET", "ANET", "LITE", "CALX", "SLAB", "PI", "IOTG", "CIEN",
-        "NTGR", "UI",
+        "NET", "PI", "SLAB", "IOTG", "NTGR", "UI", "SMCI", "PSTG",
+        "ESTC", "CFLT",
     ],
     "Synthetic Biology & Genomics": [
         "TXG", "BEAM", "CRSP", "NTLA", "VERV", "RXRX", "TWST", "DNA",
         "SDGR", "ABCL",
     ],
     "Space & Defense Tech": [
-        "RKLB", "ASTS", "LUNR", "RDW", "MNTS", "BKSY", "SPIR", "PL",
-        "LDOS", "KTOS",
+        "RKLB", "ASTS", "LUNR", "FLY", "RDW", "MNTS", "BKSY", "SPIR", "PL",
+        "KTOS",
     ],
     "Fintech Infrastructure": [
         "SOFI", "HOOD", "AFRM", "BILL", "TOST", "FLYW", "PAYO", "SHOP",
@@ -3023,6 +3380,460 @@ def screen_single(ticker: str):
     if not result:
         raise HTTPException(status_code=404, detail=f"Could not screen {ticker}")
     return _sanitize(result)
+
+
+# =============================================
+# ETF TRACKER & COMPOUND INTEREST SIMULATOR
+# =============================================
+
+ETF_UNIVERSE = {
+    "CTO": [
+        {"ticker": "VOO", "name": "Vanguard S&P 500", "index": "S&P 500", "ter": 0.03},
+        {"ticker": "VTI", "name": "Vanguard Total Stock Market", "index": "US Total Market", "ter": 0.03},
+        {"ticker": "QQQ", "name": "Invesco Nasdaq 100", "index": "Nasdaq 100", "ter": 0.20},
+        {"ticker": "VT", "name": "Vanguard Total World Stock", "index": "FTSE All-World", "ter": 0.07},
+        {"ticker": "SCHD", "name": "Schwab US Dividend Equity", "index": "US Dividend", "ter": 0.06},
+        {"ticker": "VUG", "name": "Vanguard Growth ETF", "index": "US Large Growth", "ter": 0.04},
+        {"ticker": "VGT", "name": "Vanguard Info Technology", "index": "US Tech", "ter": 0.10},
+        {"ticker": "SPLG", "name": "SPDR Portfolio S&P 500", "index": "S&P 500", "ter": 0.02},
+        {"ticker": "IVV", "name": "iShares Core S&P 500", "index": "S&P 500", "ter": 0.03},
+        {"ticker": "VIG", "name": "Vanguard Dividend Appreciation", "index": "US Dividend Growth", "ter": 0.06},
+    ],
+    "PEA": [
+        {"ticker": "CW8.PA", "name": "Amundi MSCI World", "index": "MSCI World", "ter": 0.38},
+        {"ticker": "PE500.PA", "name": "Amundi S&P 500 (PEA)", "index": "S&P 500", "ter": 0.15},
+        {"ticker": "PANX.PA", "name": "Amundi Nasdaq-100 (PEA)", "index": "Nasdaq 100", "ter": 0.23},
+        {"ticker": "EWLD.PA", "name": "Lyxor MSCI World (PEA)", "index": "MSCI World", "ter": 0.45},
+        {"ticker": "CEU.PA", "name": "Amundi MSCI Europe", "index": "MSCI Europe", "ter": 0.15},
+        {"ticker": "ESE.PA", "name": "BNP Easy S&P 500", "index": "S&P 500", "ter": 0.15},
+        {"ticker": "WPEA.PA", "name": "iShares MSCI World Swap PEA", "index": "MSCI World", "ter": 0.25},
+        {"ticker": "PSP5.PA", "name": "Lyxor PEA S&P 500", "index": "S&P 500", "ter": 0.15},
+    ],
+}
+
+_etf_cache: Dict[str, Any] = {"data": None, "last_fetched": None}
+
+
+def _fetch_etf_data(etf_info: dict) -> Optional[dict]:
+    """Fetch ETF performance data using yfinance."""
+    try:
+        t = yf.Ticker(etf_info["ticker"])
+        info = t.info
+
+        price = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose")
+        if not price:
+            return None
+
+        # Get historical data for performance calculation
+        hist = t.history(period="max")
+        if hist.empty or len(hist) < 30:
+            return None
+
+        current = hist["Close"].iloc[-1]
+
+        # Calculate returns for various periods
+        def _calc_return(days: int) -> Optional[float]:
+            if len(hist) < days:
+                return None
+            old = hist["Close"].iloc[-days]
+            return round(((current - old) / old) * 100, 2)
+
+        # Annualized return since inception
+        total_days = (hist.index[-1] - hist.index[0]).days
+        total_years = total_days / 365.25
+        if total_years > 0:
+            inception_price = hist["Close"].iloc[0]
+            total_return = current / inception_price
+            annualized = (total_return ** (1 / total_years) - 1) * 100
+        else:
+            annualized = None
+
+        # Build monthly chart data (last 10 years or max available)
+        monthly = hist["Close"].resample("ME").last().dropna()
+        if len(monthly) > 120:
+            monthly = monthly.iloc[-120:]
+
+        chart_data = []
+        if not monthly.empty:
+            base = monthly.iloc[0]
+            for date, val in monthly.items():
+                chart_data.append({
+                    "date": date.strftime("%Y-%m"),
+                    "value": round(float(val), 2),
+                    "indexed": round((float(val) / float(base)) * 100, 2),
+                })
+
+        inception_date = hist.index[0].strftime("%Y-%m-%d")
+
+        return {
+            "ticker": etf_info["ticker"],
+            "name": etf_info["name"],
+            "index": etf_info["index"],
+            "ter": etf_info["ter"],
+            "price": round(float(price), 2),
+            "currency": info.get("currency", "USD"),
+            "inception_date": inception_date,
+            "total_years": round(total_years, 1),
+            "annualized_return": round(float(annualized), 2) if annualized else None,
+            "return_ytd": _calc_return(len(hist) - len(hist.loc[:f"{datetime.datetime.now().year}-01-01"]) if f"{datetime.datetime.now().year}-01-01" in hist.index else 0),
+            "return_1y": _calc_return(252),
+            "return_3y": _calc_return(756),
+            "return_5y": _calc_return(1260),
+            "return_10y": _calc_return(2520),
+            "return_since_inception": round(((current - hist["Close"].iloc[0]) / hist["Close"].iloc[0]) * 100, 2),
+            "chart": chart_data,
+            "market_cap": info.get("totalAssets") or info.get("marketCap") or 0,
+        }
+    except Exception as e:
+        print(f"ETF fetch error for {etf_info['ticker']}: {e}")
+        return None
+
+
+@app.get("/etf")
+def get_etf_list():
+    """Get all ETFs with basic info and performance."""
+    results = {"CTO": [], "PEA": []}
+
+    for account_type, etfs in ETF_UNIVERSE.items():
+        for etf_info in etfs:
+            data = _fetch_etf_data(etf_info)
+            if data:
+                results[account_type].append(data)
+            _time.sleep(0.3)
+
+    # Sort by annualized return descending
+    for account_type in results:
+        results[account_type].sort(
+            key=lambda x: x.get("annualized_return") or 0,
+            reverse=True
+        )
+
+    return _sanitize(results)
+
+
+@app.get("/etf/{ticker}")
+def get_etf_detail(ticker: str):
+    """Get detailed data for a single ETF."""
+    # Find the ETF info
+    etf_info = None
+    account_type = None
+    for at, etfs in ETF_UNIVERSE.items():
+        for e in etfs:
+            if e["ticker"].upper() == ticker.upper() or e["ticker"].upper().replace(".PA", "") == ticker.upper():
+                etf_info = e
+                account_type = at
+                break
+
+    if not etf_info:
+        raise HTTPException(status_code=404, detail=f"ETF {ticker} not found")
+
+    data = _fetch_etf_data(etf_info)
+    if not data:
+        raise HTTPException(status_code=500, detail=f"Could not fetch data for {ticker}")
+
+    data["account_type"] = account_type
+    return _sanitize(data)
+
+
+@app.get("/etf/compare/{tickers}")
+def compare_etfs(tickers: str):
+    """Compare multiple ETFs. Tickers separated by commas."""
+    ticker_list = [t.strip() for t in tickers.split(",")]
+    results = []
+
+    for ticker in ticker_list[:6]:  # Max 6 ETFs
+        # Find ETF info
+        etf_info = None
+        for at, etfs in ETF_UNIVERSE.items():
+            for e in etfs:
+                if e["ticker"].upper() == ticker.upper() or e["ticker"].upper().replace(".PA", "") == ticker.upper():
+                    etf_info = e
+                    break
+
+        if etf_info:
+            data = _fetch_etf_data(etf_info)
+            if data:
+                results.append(data)
+            _time.sleep(0.3)
+
+    return _sanitize({"etfs": results})
+
+
+@app.post("/simulator/compound")
+def compound_interest_simulator(
+    initial: float = 0,
+    monthly: float = 0,
+    annual_rate: float = 10,
+    years: int = 20,
+    annual_fees: float = 0,
+):
+    """Simulate compound interest over time."""
+    if years < 1:
+        years = 1
+    if years > 50:
+        years = 50
+
+    net_rate = annual_rate - annual_fees
+    monthly_rate = net_rate / 100 / 12
+
+    data_points = []
+    balance = initial
+    total_invested = initial
+
+    for month in range(years * 12 + 1):
+        year = month / 12
+        interest_earned = balance - total_invested
+
+        data_points.append({
+            "month": month,
+            "year": round(year, 2),
+            "balance": round(balance, 2),
+            "invested": round(total_invested, 2),
+            "interest": round(interest_earned, 2),
+        })
+
+        if month < years * 12:
+            balance = balance * (1 + monthly_rate) + monthly
+            total_invested += monthly
+
+    final = data_points[-1]
+
+    return _sanitize({
+        "params": {
+            "initial": initial,
+            "monthly": monthly,
+            "annual_rate": annual_rate,
+            "annual_fees": annual_fees,
+            "net_rate": round(net_rate, 2),
+            "years": years,
+        },
+        "result": {
+            "final_capital": final["balance"],
+            "total_invested": final["invested"],
+            "total_interest": final["interest"],
+            "interest_pct": round(final["interest"] / max(final["balance"], 1) * 100, 1),
+        },
+        "chart": data_points[::max(1, len(data_points) // 120)],  # ~120 points for smooth chart
+    })
+
+
+# =============================================
+# IPO WATCHLIST & STOCKS TO WATCH
+# =============================================
+
+IPO_WATCHLIST = [
+    {
+        "company": "SpaceX / Starlink",
+        "sector": "Aerospace & Satellite Internet",
+        "expected_date": "H2 2026",
+        "valuation": "$1.5T (estimated)",
+        "valuation_num": 1_500_000_000_000,
+        "exchange": "NYSE",
+        "status": "SEC filing confirmed",
+        "description": "Le plus gros IPO de l'histoire. SpaceX a déposé les documents auprès de la SEC. Le roadshow pourrait commencer dès juin 2026. Starlink, la division internet par satellite rentable en EBITDA, pourrait être introduite séparément. Levée estimée entre 25 et 75 milliards de dollars.",
+        "hot": True,
+        "confidence": 90,
+        "related_stocks": [
+            {"ticker": "GOOG", "reason": "Détient ~7% de SpaceX depuis 2015 — gain potentiel de +$100B à l'IPO"},
+            {"ticker": "NVDA", "reason": "Fournisseur majeur de GPU pour xAI (filiale IA de Musk) — SpaceX prévoit d'investir massivement en puces Nvidia"},
+            {"ticker": "BA", "reason": "Concurrent direct dans le spatial — l'IPO SpaceX pourrait revaloriser tout le secteur aérospatial"},
+            {"ticker": "LMT", "reason": "Contrats défense/espace — bénéficie de l'attention accrue sur le secteur spatial"},
+            {"ticker": "RKLB", "reason": "Rocket Lab — concurrent direct dans les lancements de petits satellites"},
+        ],
+    },
+    {
+        "company": "OpenAI",
+        "sector": "Intelligence Artificielle",
+        "expected_date": "H2 2026 / début 2027",
+        "valuation": "$500B+ (dernière valorisation)",
+        "valuation_num": 500_000_000_000,
+        "exchange": "NASDAQ",
+        "status": "Conversion en for-profit en cours",
+        "description": "Créateur de ChatGPT et GPT-5. OpenAI est en train de se convertir en entreprise à but lucratif, étape nécessaire avant l'IPO. La valorisation pourrait atteindre $1T lors de l'introduction. Le timing dépend de la finalisation de la restructuration juridique.",
+        "hot": True,
+        "confidence": 75,
+        "related_stocks": [
+            {"ticker": "MSFT", "reason": "Investisseur principal (~49% des revenus) et partenaire cloud Azure — exposition directe à OpenAI"},
+            {"ticker": "NVDA", "reason": "Fournisseur exclusif des GPU H100/B200 pour l'entraînement des modèles GPT"},
+            {"ticker": "AAPL", "reason": "Partenariat Apple Intelligence avec OpenAI intégré dans iOS — dépendance croissante"},
+            {"ticker": "CRM", "reason": "Salesforce utilise les modèles OpenAI dans Einstein AI — bénéficiaire indirect"},
+        ],
+    },
+    {
+        "company": "Anthropic",
+        "sector": "Intelligence Artificielle (Safety)",
+        "expected_date": "H2 2026 / 2027",
+        "valuation": "$60B+ (dernière levée)",
+        "valuation_num": 60_000_000_000,
+        "exchange": "NASDAQ",
+        "status": "Conseillers juridiques engagés pour l'IPO",
+        "description": "Créateur de Claude. Anthropic a engagé des conseillers juridiques pour préparer l'IPO. Fondée par d'anciens dirigeants d'OpenAI, l'entreprise se positionne sur la sécurité de l'IA. Amazon est le principal investisseur avec $4B+ investis.",
+        "hot": True,
+        "confidence": 70,
+        "related_stocks": [
+            {"ticker": "AMZN", "reason": "Investisseur majeur ($4B+) et partenaire cloud AWS — détient une part significative d'Anthropic"},
+            {"ticker": "GOOG", "reason": "Investisseur ($2B+) dans Anthropic — double exposition SpaceX + Anthropic"},
+            {"ticker": "NVDA", "reason": "Fournisseur GPU pour l'entraînement de Claude et les clusters de calcul"},
+        ],
+    },
+    {
+        "company": "Stripe",
+        "sector": "Fintech / Paiements",
+        "expected_date": "H1-H2 2026",
+        "valuation": "$159B (tender offer 2025)",
+        "valuation_num": 159_000_000_000,
+        "exchange": "NYSE",
+        "status": "IPO window monitoring — reste privé pour l'instant",
+        "description": "Le 'OS financier' de l'internet. Stripe a complété un tender offer à $159B mais choisit de rester privé pour le moment. L'entreprise se positionne comme infrastructure financière pour les agents IA. L'IPO serait l'un des plus gros de la fintech.",
+        "hot": False,
+        "confidence": 55,
+        "related_stocks": [
+            {"ticker": "ADYEN", "reason": "Concurrent direct européen — l'IPO Stripe fixerait un benchmark de valorisation"},
+            {"ticker": "SQ", "reason": "Block/Square — concurrent direct, une IPO Stripe à $159B pourrait revaloriser SQ"},
+            {"ticker": "PYPL", "reason": "PayPal — même secteur, l'attention sur Stripe profite à tout le secteur paiements"},
+            {"ticker": "SHOP", "reason": "Shopify utilise Stripe comme processeur de paiement principal"},
+        ],
+    },
+    {
+        "company": "Databricks",
+        "sector": "Data & IA / Cloud",
+        "expected_date": "H2 2026 / 2027",
+        "valuation": "$134B (Series L, 2025)",
+        "valuation_num": 134_000_000_000,
+        "exchange": "NASDAQ",
+        "status": "CFO confirme 'prêt à entrer en bourse'",
+        "description": "Plateforme lakehouse unifiée pour le data engineering et le ML. Levée de $10B début 2025 à $134B. Le CFO a déclaré que Databricks est 'prêt quand il le décidera'. Revenu estimé à $3B+ annualisé.",
+        "hot": False,
+        "confidence": 60,
+        "related_stocks": [
+            {"ticker": "SNOW", "reason": "Snowflake — concurrent direct, l'IPO Databricks impacterait directement sa valorisation"},
+            {"ticker": "MDB", "reason": "MongoDB — écosystème data, bénéficie de l'attention sur le secteur"},
+            {"ticker": "DDOG", "reason": "Datadog — observabilité, souvent déployé avec Databricks"},
+        ],
+    },
+    {
+        "company": "Canva",
+        "sector": "Design & Productivité",
+        "expected_date": "2026",
+        "valuation": "$42B (vente secondaire 2025)",
+        "valuation_num": 42_000_000_000,
+        "exchange": "NASDAQ",
+        "status": "IPO attendu — transition vers l'entreprise",
+        "description": "Plateforme de design avec 260M d'utilisateurs et 29M de payants. Revenu annualisé de $3.5B. Canva fait la transition du consommateur vers l'entreprise, ce qui soutiendrait une valorisation premium à l'IPO.",
+        "hot": False,
+        "confidence": 65,
+        "related_stocks": [
+            {"ticker": "ADBE", "reason": "Adobe — concurrent direct (Figma, Creative Cloud), l'IPO Canva met la pression"},
+            {"ticker": "FIGM", "reason": "Figma (si coté) — concurrent direct dans le design collaboratif"},
+        ],
+    },
+    {
+        "company": "Klarna",
+        "sector": "Fintech / Buy Now Pay Later",
+        "expected_date": "H1 2026",
+        "valuation": "$15-20B (estimé)",
+        "valuation_num": 17_500_000_000,
+        "exchange": "NYSE",
+        "status": "Retour à la rentabilité — IPO imminent",
+        "description": "Leader du BNPL en Europe. Klarna est revenu à la rentabilité après une restructuration massive. L'entreprise est sous pression pour entrer en bourse rapidement pour capitaliser sur le momentum positif.",
+        "hot": True,
+        "confidence": 85,
+        "related_stocks": [
+            {"ticker": "AFRM", "reason": "Affirm — concurrent direct BNPL, valorisation directement impactée par l'IPO Klarna"},
+            {"ticker": "PYPL", "reason": "PayPal (BNPL intégré) — même secteur, comparaison de multiples"},
+            {"ticker": "SQ", "reason": "Block/Afterpay — concurrent BNPL, corrélation directe"},
+        ],
+    },
+    {
+        "company": "Shein",
+        "sector": "E-commerce / Fast Fashion",
+        "expected_date": "2026-2027",
+        "valuation": "$30B (révisé à la baisse)",
+        "valuation_num": 30_000_000_000,
+        "exchange": "HKEX (Hong Kong)",
+        "status": "Filing confidentiel à Hong Kong",
+        "description": "Géant de la fast fashion en ligne. Après des tentatives ratées aux US et à Londres (problèmes de gouvernance et supply chain), Shein vise Hong Kong. Valorisation en baisse de $100B à $30B.",
+        "hot": False,
+        "confidence": 50,
+        "related_stocks": [
+            {"ticker": "AMZN", "reason": "Amazon — concurrent e-commerce, l'IPO Shein met en lumière la compétition"},
+            {"ticker": "INDT", "reason": "Inditex (Zara) — concurrent fast fashion, impact direct sur les multiples"},
+        ],
+    },
+    {
+        "company": "Revolut",
+        "sector": "Fintech / Néobanque",
+        "expected_date": "H2 2026 / 2027",
+        "valuation": "$45B (tender offer 2024)",
+        "valuation_num": 45_000_000_000,
+        "exchange": "LSE / NASDAQ",
+        "status": "Croissance forte — licence bancaire UK obtenue",
+        "description": "Néobanque européenne avec un revenu en hausse de 72% à $4B en 2024. Free cash flow positif. Licence bancaire UK obtenue. L'IPO pourrait se faire à Londres ou au Nasdaq.",
+        "hot": False,
+        "confidence": 60,
+        "related_stocks": [
+            {"ticker": "NU", "reason": "Nu Holdings (Nubank) — comparable direct, néobanque cotée au NYSE"},
+            {"ticker": "SOFI", "reason": "SoFi — fintech US comparable, corrélation sur les multiples"},
+        ],
+    },
+    {
+        "company": "Plaid",
+        "sector": "Fintech / Infrastructure",
+        "expected_date": "2026",
+        "valuation": "$8B (tender offer début 2026)",
+        "valuation_num": 8_000_000_000,
+        "exchange": "NASDAQ",
+        "status": "Valorisation en hausse — IPO probable",
+        "description": "Infrastructure de connexion bancaire utilisée par la plupart des fintechs. Plaid connecte les apps financières aux comptes bancaires des utilisateurs. Valorisation passée de $6.1B à $8B début 2026.",
+        "hot": False,
+        "confidence": 55,
+        "related_stocks": [
+            {"ticker": "FIS", "reason": "Fidelity National — infrastructure financière comparable"},
+            {"ticker": "FISV", "reason": "Fiserv — même secteur infrastructure paiements"},
+        ],
+    },
+]
+
+
+@app.get("/ipo-watchlist")
+def get_ipo_watchlist():
+    """Get the IPO watchlist with related stocks."""
+    # Fetch current prices for related stocks
+    all_related_tickers = set()
+    for ipo in IPO_WATCHLIST:
+        for rs in ipo.get("related_stocks", []):
+            all_related_tickers.add(rs["ticker"])
+
+    # Batch fetch prices
+    prices = {}
+    for ticker in all_related_tickers:
+        try:
+            t = yf.Ticker(ticker)
+            info = t.info
+            p = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose")
+            chg = info.get("regularMarketChangePercent", 0)
+            mcap = info.get("marketCap", 0)
+            prices[ticker] = {"price": round(float(p), 2) if p else None, "change_pct": round(float(chg), 2) if chg else 0, "market_cap": mcap}
+        except Exception:
+            prices[ticker] = {"price": None, "change_pct": 0, "market_cap": 0}
+        _time.sleep(0.2)
+
+    # Enrich IPO data with live prices
+    result = []
+    for ipo in IPO_WATCHLIST:
+        enriched = dict(ipo)
+        enriched_stocks = []
+        for rs in ipo.get("related_stocks", []):
+            stock = dict(rs)
+            stock.update(prices.get(rs["ticker"], {}))
+            enriched_stocks.append(stock)
+        enriched["related_stocks"] = enriched_stocks
+        result.append(enriched)
+
+    # Sort by confidence descending, then by valuation
+    result.sort(key=lambda x: (x.get("hot", False), x.get("confidence", 0)), reverse=True)
+
+    return _sanitize({"ipos": result, "total": len(result)})
 
 
 if __name__ == "__main__":

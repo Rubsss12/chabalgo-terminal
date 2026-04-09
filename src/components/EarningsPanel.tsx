@@ -47,11 +47,13 @@ function buildEarningsSummary(history: EarningsEntry[], nextEarnings: NextEarnin
   const beatRate = withActual.length > 0 ? (beats.length / withActual.length * 100) : 0;
 
   if (beatRate >= 80) {
-    parts.push(`${ticker} has beaten estimates in ${beats.length} of the last ${withActual.length} quarters (${beatRate.toFixed(0)}%) — a very consistent execution track record.`);
+    parts.push(`${ticker} has beaten analyst EPS estimates in ${beats.length} of the last ${withActual.length} quarters — a ${beatRate.toFixed(0)}% beat rate. This level of consistency is a hallmark of well-managed companies with conservative guidance practices. Management teams that routinely under-promise and over-deliver tend to build institutional investor trust, which supports premium valuations and limits downside during market corrections.`);
   } else if (beatRate >= 60) {
-    parts.push(`${ticker} has beaten estimates in ${beats.length}/${withActual.length} quarters — generally solid but with occasional misses.`);
+    parts.push(`${ticker} has beaten estimates in ${beats.length} out of ${withActual.length} recent quarters (${beatRate.toFixed(0)}% beat rate). While this is a generally solid track record, the occasional misses indicate some unpredictability in the business — either revenue timing, cost fluctuations, or one-time items that make quarter-to-quarter results harder to forecast. Investors should focus on the trend direction rather than any single quarter.`);
+  } else if (beatRate >= 40) {
+    parts.push(`${ticker} has a mixed earnings track record, beating estimates only ${beats.length} out of ${withActual.length} times (${beatRate.toFixed(0)}%). A sub-60% beat rate raises questions about management's ability to forecast their own business or about structural challenges making results unpredictable. This level of inconsistency often leads to a "show me" discount in the stock's valuation until the company proves it can deliver more reliably.`);
   } else {
-    parts.push(`${ticker} has only beaten estimates ${beats.length}/${withActual.length} times recently — inconsistent execution is a concern.`);
+    parts.push(`${ticker} has struggled to meet Wall Street expectations, beating estimates just ${beats.length} out of ${withActual.length} quarters (${beatRate.toFixed(0)}%). Persistent misses suggest either that analysts are too optimistic about the business trajectory, or that management is facing genuine execution challenges. Stocks with low beat rates typically trade at discounted multiples and need a clear inflection point to re-rate higher.`);
   }
 
   // Recent trend
@@ -60,22 +62,31 @@ function buildEarningsSummary(history: EarningsEntry[], nextEarnings: NextEarnin
     const prev = withActual[1];
     if (latest.surprise_pct != null && prev.surprise_pct != null) {
       if (latest.surprise_pct > prev.surprise_pct && latest.surprise_pct > 0) {
-        parts.push(`The surprise margin is improving (+${latest.surprise_pct.toFixed(1)}% last quarter vs +${prev.surprise_pct.toFixed(1)}% before) — a positive trend.`);
+        parts.push(`Importantly, the earnings surprise margin is improving: last quarter came in +${latest.surprise_pct.toFixed(1)}% above estimates versus +${prev.surprise_pct.toFixed(1)}% the quarter before. An expanding beat margin is one of the strongest forward-looking indicators — it often precedes analyst estimate revisions upward, which is a key catalyst for stock price appreciation.`);
+      } else if (latest.surprise_pct > 0 && prev.surprise_pct > 0 && latest.surprise_pct < prev.surprise_pct) {
+        parts.push(`While ${ticker} still beat estimates last quarter (+${latest.surprise_pct.toFixed(1)}%), the surprise margin narrowed from +${prev.surprise_pct.toFixed(1)}% the quarter before. A shrinking beat margin can be an early warning sign — it may indicate that the business is decelerating while analyst expectations are catching up, leaving less room for positive surprises going forward.`);
       } else if (latest.surprise_pct < 0) {
-        parts.push(`Last quarter was a miss (${latest.surprise_pct.toFixed(1)}% below estimates) — watch for whether this is a one-off or a trend.`);
+        parts.push(`Last quarter was a miss, coming in ${latest.surprise_pct.toFixed(1)}% below consensus estimates. An earnings miss after a period of beats is particularly concerning because it can trigger a re-evaluation by analysts and investors. The key question is whether this was caused by a one-time factor (timing, FX impact, restructuring charge) or reflects a fundamental deterioration in business momentum.`);
       }
     }
-    if (latest.actual != null && prev.actual != null && prev.actual > 0) {
+    if (latest.actual != null && prev.actual != null && prev.actual !== 0) {
       const epsGrowth = ((latest.actual - prev.actual) / Math.abs(prev.actual) * 100);
-      if (epsGrowth > 20) {
-        parts.push(`EPS grew ${epsGrowth.toFixed(0)}% quarter-over-quarter — strong earnings momentum.`);
+      if (epsGrowth > 30) {
+        parts.push(`EPS grew ${epsGrowth.toFixed(0)}% quarter-over-quarter, demonstrating strong earnings acceleration. This kind of sequential improvement signals that the business is scaling effectively, with revenue growth translating into disproportionate bottom-line gains — a sign of operating leverage at work.`);
+      } else if (epsGrowth > 10) {
+        parts.push(`EPS grew ${epsGrowth.toFixed(0)}% versus the prior quarter, showing healthy sequential improvement in profitability.`);
+      } else if (epsGrowth < -15) {
+        parts.push(`EPS declined ${Math.abs(epsGrowth).toFixed(0)}% sequentially, which could reflect seasonality, increased investment spending, or weakening demand. It's important to compare this against the same quarter last year for a cleaner read on the underlying trend.`);
       }
     }
   }
 
+  // Next earnings
   if (nextEarnings) {
-    if (nextEarnings.days_until <= 14) {
-      parts.push(`Next earnings in ${nextEarnings.days_until} days — expect elevated volatility around the report.`);
+    if (nextEarnings.days_until <= 7) {
+      parts.push(`Upcoming earnings report is imminent — just ${nextEarnings.days_until} day${nextEarnings.days_until === 1 ? "" : "s"} away${nextEarnings.hour === "bmo" ? " (before market open)" : nextEarnings.hour === "amc" ? " (after market close)" : ""}. Expect significantly elevated volatility around the report. Options pricing typically implies a ${nextEarnings.days_until <= 3 ? "5-10%" : "3-7%"} move in either direction. If you're considering a position, be aware that the risk/reward profile changes dramatically right before earnings.`);
+    } else if (nextEarnings.days_until <= 30) {
+      parts.push(`Next earnings report is scheduled for ${nextEarnings.date} (${nextEarnings.days_until} days out). As the report approaches, expect the stock to increasingly trade on earnings expectations rather than broader market dynamics. This is a period where analyst estimate revisions and management commentary at conferences become the primary drivers.`);
     }
   }
 
@@ -211,9 +222,12 @@ export default function EarningsPanel({ ticker }: { ticker: string }) {
           {/* Summary */}
           {data.history.length > 0 && (
             <div className="mt-3 pt-3 border-t border-border/50">
-              <p className="text-[11px] text-muted leading-relaxed">
-                {buildEarningsSummary(data.history, data.next_earnings, ticker)}
-              </p>
+              <div className="bg-subtle/50 border-l-2 border-accent/30 pl-3 pr-3 py-2.5">
+                <div className="text-accent/60 text-[9px] font-semibold tracking-[0.15em] mb-1.5">AI ANALYSIS</div>
+                <p className="text-[11px] text-muted leading-[1.7]">
+                  {buildEarningsSummary(data.history, data.next_earnings, ticker)}
+                </p>
+              </div>
             </div>
           )}
         </>
