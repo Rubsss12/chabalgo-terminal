@@ -254,7 +254,10 @@ export default function Charts({ data, ticker }: ChartsProps) {
 
       {/* Summary */}
       <div className="mt-4 pt-3 border-t border-border/50">
-        <p className="text-[11px] text-muted leading-relaxed">{buildChartSummary(data, ticker)}</p>
+        <div className="bg-subtle/50 border-l-2 border-accent/30 pl-3 pr-3 py-2.5">
+          <div className="text-accent/60 text-[9px] font-semibold tracking-[0.15em] mb-1.5">AI ANALYSIS</div>
+          <p className="text-[11px] text-muted leading-[1.7]">{buildChartSummary(data, ticker)}</p>
+        </div>
       </div>
     </div>
   );

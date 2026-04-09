@@ -128,7 +128,10 @@ export default function Fundamentals({ data }: { data: AnalysisData }) {
         />
       </div>
       <div className="mt-3 pt-3 border-t border-border/50">
-        <p className="text-[11px] text-muted leading-relaxed">{buildSummary(f, data.ticker)}</p>
+        <div className="bg-subtle/50 border-l-2 border-accent/30 pl-3 pr-3 py-2.5">
+          <div className="text-accent/60 text-[9px] font-semibold tracking-[0.15em] mb-1.5">AI ANALYSIS</div>
+          <p className="text-[11px] text-muted leading-[1.7]">{buildSummary(f, data.ticker)}</p>
+        </div>
       </div>
     </div>
   );
