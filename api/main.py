@@ -3836,6 +3836,561 @@ def get_ipo_watchlist():
     return _sanitize({"ipos": result, "total": len(result)})
 
 
+# ── Options Flow / Unusual Activity ──────────────────────────────────────
+
+def _get_options_flow(ticker: str) -> dict:
+    """Analyze options chain for unusual activity on a single ticker."""
+    t = yf.Ticker(ticker)
+    expirations = t.options
+    if not expirations:
+        return {}
+
+    # Take nearest expiry + next month (up to 2)
+    expiries_to_scan = list(expirations[:min(4, len(expirations))])
+
+    unusual_calls = []
+    unusual_puts = []
+    total_call_vol = 0
+    total_put_vol = 0
+    total_call_oi = 0
+    total_put_oi = 0
+    top_contracts = []
+
+    for exp in expiries_to_scan:
+        try:
+            chain = t.option_chain(exp)
+        except Exception:
+            continue
+
+        for side, df, label in [("calls", chain.calls, "CALL"), ("puts", chain.puts, "PUT")]:
+            if df is None or df.empty:
+                continue
+            for _, row in df.iterrows():
+                def _safe_int(v, d=0):
+                    try:
+                        f = float(v) if v is not None else d
+                        return int(f) if not (f != f) else d  # NaN check
+                    except (ValueError, TypeError):
+                        return d
+                def _safe_float(v, d=0.0):
+                    try:
+                        f = float(v) if v is not None else d
+                        return f if not (f != f) else d
+                    except (ValueError, TypeError):
+                        return d
+                vol = _safe_int(row.get("volume", 0))
+                oi = _safe_int(row.get("openInterest", 0))
+                strike = _safe_float(row.get("strike", 0))
+                last = _safe_float(row.get("lastPrice", 0))
+                bid = _safe_float(row.get("bid", 0))
+                ask = _safe_float(row.get("ask", 0))
+                iv = _safe_float(row.get("impliedVolatility", 0))
+                itm = bool(row.get("inTheMoney", False))
+
+                if label == "CALL":
+                    total_call_vol += vol
+                    total_call_oi += oi
+                else:
+                    total_put_vol += vol
+                    total_put_oi += oi
+
+                ratio = round(vol / oi, 2) if oi > 0 else 0
+                premium = round(vol * last * 100, 2) if vol > 0 and last > 0 else 0
+
+                contract = {
+                    "strike": strike,
+                    "expiry": exp,
+                    "type": label,
+                    "volume": vol,
+                    "open_interest": oi,
+                    "vol_oi_ratio": ratio,
+                    "last_price": round(last, 2),
+                    "bid": round(bid, 2),
+                    "ask": round(ask, 2),
+                    "implied_volatility": round(iv * 100, 1),
+                    "in_the_money": itm,
+                    "premium": round(premium, 0),
+                }
+
+                # Unusual = volume > 2x open interest
+                if vol > 0 and oi > 0 and vol > 2 * oi:
+                    if label == "CALL":
+                        unusual_calls.append(contract)
+                    else:
+                        unusual_puts.append(contract)
+
+                if vol > 100:
+                    top_contracts.append(contract)
+
+    # Sort unusual by vol/OI ratio descending
+    unusual_calls.sort(key=lambda x: x["vol_oi_ratio"], reverse=True)
+    unusual_puts.sort(key=lambda x: x["vol_oi_ratio"], reverse=True)
+    top_contracts.sort(key=lambda x: x["volume"], reverse=True)
+    top_contracts = top_contracts[:15]
+
+    put_call_ratio = round(total_put_vol / total_call_vol, 2) if total_call_vol > 0 else 0
+
+    return {
+        "ticker": ticker,
+        "expiries_analyzed": expiries_to_scan,
+        "unusual_calls": unusual_calls[:20],
+        "unusual_puts": unusual_puts[:20],
+        "put_call_ratio": put_call_ratio,
+        "total_call_volume": total_call_vol,
+        "total_put_volume": total_put_vol,
+        "total_call_oi": total_call_oi,
+        "total_put_oi": total_put_oi,
+        "top_contracts": top_contracts,
+    }
+
+
+def _generate_options_ai_summary(data: dict) -> str:
+    """Generate a French AI summary of options flow."""
+    ticker = data.get("ticker", "")
+    pcr = data.get("put_call_ratio", 0)
+    n_unusual_calls = len(data.get("unusual_calls", []))
+    n_unusual_puts = len(data.get("unusual_puts", []))
+    total_cv = data.get("total_call_volume", 0)
+    total_pv = data.get("total_put_volume", 0)
+
+    parts = []
+
+    # Put/Call ratio analysis
+    if pcr > 1.5:
+        parts.append(
+            f"Le ratio put/call de {pcr} pour {ticker} indique un sentiment tres bearish sur le marche des options. "
+            f"Les traders d'options positionnent massivement des protections a la baisse, ce qui peut signaler "
+            f"soit une anticipation de mauvaises nouvelles, soit une couverture institutionnelle importante."
+        )
+    elif pcr > 1.0:
+        parts.append(
+            f"Le ratio put/call de {pcr} pour {ticker} montre une legere dominance des puts, "
+            f"suggerant une prudence accrue des participants du marche. Ce niveau est souvent associe "
+            f"a une phase de consolidation ou d'incertitude."
+        )
+    elif pcr > 0.5:
+        parts.append(
+            f"Le ratio put/call de {pcr} pour {ticker} est dans une zone neutre-haussiere. "
+            f"L'equilibre relatif entre calls et puts indique un marche sans conviction extreme, "
+            f"typique d'une phase d'accumulation ou d'attente de catalyseur."
+        )
+    else:
+        parts.append(
+            f"Le ratio put/call de {pcr} pour {ticker} est resolument bullish. "
+            f"La forte dominance des calls ({total_cv:,} volume calls vs {total_pv:,} puts) "
+            f"indique un positionnement agressif a la hausse de la part des traders d'options."
+        )
+
+    # Unusual activity analysis
+    total_unusual = n_unusual_calls + n_unusual_puts
+    if total_unusual > 10:
+        parts.append(
+            f"Activite inhabituelle significative detectee: {n_unusual_calls} calls et {n_unusual_puts} puts "
+            f"avec un volume depassant 2x l'open interest. Ce niveau d'activite anormale suggere "
+            f"un flux d'ordres institutionnel ou une anticipation d'un evenement majeur (earnings, FDA, M&A). "
+            f"Les smart money flows de cette ampleur meritent une attention particuliere."
+        )
+    elif total_unusual > 3:
+        parts.append(
+            f"Activite inhabituelle moderee: {n_unusual_calls} calls et {n_unusual_puts} puts "
+            f"avec un ratio volume/OI eleve. Ces contrats specifiques pourraient representer "
+            f"des paris directionnels informes ou des strategies de couverture sectorielle."
+        )
+    elif total_unusual > 0:
+        parts.append(
+            f"Quelques contrats montrent une activite inhabituelle ({total_unusual} au total). "
+            f"A ce niveau, il peut s'agir de flux opportunistes ponctuels plutot que d'un signal directionnel fort."
+        )
+    else:
+        parts.append(
+            f"Aucune activite options particulierement inhabituelle detectee pour {ticker}. "
+            f"Le flux d'ordres semble normal et en ligne avec les volumes historiques."
+        )
+
+    # Top contract highlights
+    top = data.get("top_contracts", [])
+    if top:
+        biggest = top[0]
+        parts.append(
+            f"Le contrat le plus actif est le {biggest['type']} strike ${biggest['strike']} "
+            f"exp. {biggest['expiry']} avec {biggest['volume']:,} contrats echanges "
+            f"(~${biggest.get('premium', 0):,.0f} en prime). "
+            f"Surveillez les niveaux de strike concentres pour identifier les zones de support/resistance "
+            f"implicites definies par le marche des options."
+        )
+
+    return " ".join(parts)
+
+
+@app.get("/options-flow/screener/unusual")
+def options_screener_unusual():
+    """Scan popular tickers for unusual options activity."""
+    # Build scan list from SCREENER_SECTORS (deduplicated)
+    scan_tickers = []
+    seen = set()
+    for tickers_list in SCREENER_SECTORS.values():
+        for t in tickers_list:
+            if t not in seen:
+                scan_tickers.append(t)
+                seen.add(t)
+
+    # Also add mega-caps for broader coverage
+    mega_caps = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD", "NFLX", "SPY", "QQQ", "IWM"]
+    for t in mega_caps:
+        if t not in seen:
+            scan_tickers.append(t)
+            seen.add(t)
+
+    results = []
+    scan_start = datetime.datetime.now(datetime.timezone.utc)
+
+    def _scan_one(tk):
+        try:
+            t = yf.Ticker(tk)
+            expirations = t.options
+            if not expirations:
+                return []
+            # Only scan nearest expiry for speed
+            chain = t.option_chain(expirations[0])
+            hits = []
+            for side, df, label in [("calls", chain.calls, "CALL"), ("puts", chain.puts, "PUT")]:
+                if df is None or df.empty:
+                    continue
+                for _, row in df.iterrows():
+                    def _si(v, d=0):
+                        try:
+                            f = float(v) if v is not None else d
+                            return int(f) if not (f != f) else d
+                        except (ValueError, TypeError):
+                            return d
+                    def _sf(v, d=0.0):
+                        try:
+                            f = float(v) if v is not None else d
+                            return f if not (f != f) else d
+                        except (ValueError, TypeError):
+                            return d
+                    vol = _si(row.get("volume", 0))
+                    oi = _si(row.get("openInterest", 0))
+                    if vol < 100 or oi < 10:
+                        continue
+                    ratio = round(vol / oi, 2) if oi > 0 else 0
+                    if ratio < 2.0:
+                        continue
+                    last = _sf(row.get("lastPrice", 0))
+                    premium = round(vol * last * 100, 0)
+                    hits.append({
+                        "ticker": tk,
+                        "type": label,
+                        "strike": _sf(row.get("strike", 0)),
+                        "expiry": expirations[0],
+                        "volume": vol,
+                        "open_interest": oi,
+                        "vol_oi_ratio": ratio,
+                        "last_price": round(last, 2),
+                        "premium": premium,
+                        "implied_volatility": round(_sf(row.get("impliedVolatility", 0)) * 100, 1),
+                        "in_the_money": bool(row.get("inTheMoney", False)),
+                    })
+            return hits
+        except Exception:
+            return []
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(_scan_one, tk): tk for tk in scan_tickers}
+        for future in as_completed(futures):
+            try:
+                hits = future.result(timeout=15)
+                results.extend(hits)
+            except Exception:
+                pass
+
+    # Sort by vol/OI ratio descending, take top 20
+    results.sort(key=lambda x: x["vol_oi_ratio"], reverse=True)
+    results = results[:20]
+
+    scan_time = (datetime.datetime.now(datetime.timezone.utc) - scan_start).total_seconds()
+
+    return _sanitize({
+        "results": results,
+        "scan_time": round(scan_time, 1),
+        "tickers_scanned": len(scan_tickers),
+    })
+
+
+@app.get("/options-flow/{ticker}")
+def options_flow(ticker: str):
+    """Get options flow and unusual activity for a specific ticker."""
+    ticker = resolve_ticker(ticker)
+    try:
+        data = _get_options_flow(ticker)
+        if not data:
+            raise HTTPException(status_code=404, detail=f"No options data available for {ticker}")
+        data["ai_summary"] = _generate_options_ai_summary(data)
+        return _sanitize(data)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching options flow: {str(e)}")
+
+
+# =========================================================
+# ECONOMIC CALENDAR
+# =========================================================
+
+# Known recurring US macro events with typical schedule
+RECURRING_MACRO_EVENTS = [
+    {"event": "FOMC Interest Rate Decision", "frequency": "8x/year", "impact": "high", "country": "US",
+     "description": "Décision de taux directeur de la Fed — l'événement le plus impactant pour les marchés."},
+    {"event": "CPI (YoY)", "frequency": "monthly", "impact": "high", "country": "US",
+     "description": "Indice des prix à la consommation — indicateur clé de l'inflation."},
+    {"event": "Core CPI (MoM)", "frequency": "monthly", "impact": "high", "country": "US",
+     "description": "CPI hors alimentation et énergie — mesure préférée de l'inflation sous-jacente."},
+    {"event": "Non-Farm Payrolls", "frequency": "monthly (1st Friday)", "impact": "high", "country": "US",
+     "description": "Créations d'emplois hors agriculture — baromètre de la santé du marché du travail."},
+    {"event": "GDP (QoQ)", "frequency": "quarterly", "impact": "high", "country": "US",
+     "description": "Produit intérieur brut — mesure directe de la croissance économique."},
+    {"event": "PCE Price Index", "frequency": "monthly", "impact": "medium", "country": "US",
+     "description": "Indice PCE — l'indicateur d'inflation préféré de la Fed."},
+    {"event": "PPI (MoM)", "frequency": "monthly", "impact": "medium", "country": "US",
+     "description": "Indice des prix à la production — indicateur avancé de l'inflation consommateur."},
+    {"event": "Retail Sales (MoM)", "frequency": "monthly", "impact": "medium", "country": "US",
+     "description": "Ventes au détail — mesure de la consommation des ménages (70% du PIB US)."},
+    {"event": "Initial Jobless Claims", "frequency": "weekly (Thursday)", "impact": "low", "country": "US",
+     "description": "Inscriptions hebdomadaires au chômage — indicateur temps réel du marché du travail."},
+    {"event": "FOMC Minutes", "frequency": "3 weeks after FOMC", "impact": "medium", "country": "US",
+     "description": "Compte-rendu détaillé des discussions de la Fed — révèle les nuances du débat interne."},
+]
+
+IMPACT_ORDER = {"high": 3, "medium": 2, "low": 1}
+
+
+@app.get("/economic-calendar")
+def economic_calendar(days: int = 14):
+    """Get upcoming economic events."""
+    today = datetime.date.today()
+    start = today.strftime("%Y-%m-%d")
+    end = (today + datetime.timedelta(days=days)).strftime("%Y-%m-%d")
+
+    events = []
+
+    # Try Finnhub economic calendar
+    try:
+        resp = requests.get(
+            "https://finnhub.io/api/v1/calendar/economic",
+            params={"from": start, "to": end, "token": FINNHUB_API_KEY},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            raw = resp.json()
+            for ev in raw.get("economicCalendar", []):
+                event_name = ev.get("event", "")
+                country = ev.get("country", "")
+                # Focus on US, EU, and major economies
+                if country not in ("US", "EU", "GB", "JP", "CN", "DE", "FR"):
+                    continue
+
+                # Classify impact
+                impact = "low"
+                high_keywords = ["fomc", "interest rate", "cpi", "non-farm", "nonfarm", "payroll", "gdp"]
+                med_keywords = ["pce", "ppi", "retail sales", "consumer confidence", "ism", "pmi", "housing"]
+                name_lower = event_name.lower()
+                if any(k in name_lower for k in high_keywords):
+                    impact = "high"
+                elif any(k in name_lower for k in med_keywords):
+                    impact = "medium"
+
+                actual = ev.get("actual")
+                estimate = ev.get("estimate")
+                prev = ev.get("prev")
+
+                events.append({
+                    "date": ev.get("date", ""),
+                    "time": ev.get("time", ""),
+                    "country": country,
+                    "event": event_name,
+                    "impact": impact,
+                    "actual": str(actual) if actual is not None else None,
+                    "estimate": str(estimate) if estimate is not None else None,
+                    "previous": str(prev) if prev is not None else None,
+                    "unit": ev.get("unit", ""),
+                })
+    except Exception:
+        pass
+
+    # If Finnhub returned very little, supplement with hardcoded known events
+    if len([e for e in events if e["impact"] == "high"]) < 2:
+        # Add known fixed events for coming weeks
+        import calendar as cal
+
+        # FOMC 2026 dates (approximate)
+        fomc_dates_2026 = [
+            "2026-01-28", "2026-03-18", "2026-05-06", "2026-06-17",
+            "2026-07-29", "2026-09-16", "2026-11-04", "2026-12-16",
+        ]
+
+        for fd in fomc_dates_2026:
+            d = datetime.date.fromisoformat(fd)
+            if today <= d <= today + datetime.timedelta(days=days):
+                if not any(e["event"] == "FOMC Interest Rate Decision" and e["date"] == fd for e in events):
+                    events.append({
+                        "date": fd,
+                        "time": "14:00",
+                        "country": "US",
+                        "event": "FOMC Interest Rate Decision",
+                        "impact": "high",
+                        "actual": None,
+                        "estimate": None,
+                        "previous": None,
+                        "unit": "%",
+                    })
+
+        # NFP: first Friday of each month
+        for month_offset in range(3):
+            m = today.month + month_offset
+            y = today.year
+            if m > 12:
+                m -= 12
+                y += 1
+            # First Friday
+            first_day = datetime.date(y, m, 1)
+            first_friday = first_day + datetime.timedelta(days=(4 - first_day.weekday()) % 7)
+            fd_str = first_friday.strftime("%Y-%m-%d")
+            if today <= first_friday <= today + datetime.timedelta(days=days):
+                if not any("payroll" in e["event"].lower() and e["date"] == fd_str for e in events):
+                    events.append({
+                        "date": fd_str,
+                        "time": "08:30",
+                        "country": "US",
+                        "event": "Non-Farm Payrolls",
+                        "impact": "high",
+                        "actual": None,
+                        "estimate": None,
+                        "previous": None,
+                        "unit": "K",
+                    })
+
+        # CPI: typically around 12th-14th of each month
+        for month_offset in range(3):
+            m = today.month + month_offset
+            y = today.year
+            if m > 12:
+                m -= 12
+                y += 1
+            cpi_date = datetime.date(y, m, 13)  # approximate
+            fd_str = cpi_date.strftime("%Y-%m-%d")
+            if today <= cpi_date <= today + datetime.timedelta(days=days):
+                if not any("cpi" in e["event"].lower() and e["date"] == fd_str for e in events):
+                    events.append({
+                        "date": fd_str,
+                        "time": "08:30",
+                        "country": "US",
+                        "event": "CPI (YoY)",
+                        "impact": "high",
+                        "actual": None,
+                        "estimate": None,
+                        "previous": None,
+                        "unit": "%",
+                    })
+
+        # Jobless Claims: every Thursday
+        current = today
+        while current <= today + datetime.timedelta(days=days):
+            if current.weekday() == 3:  # Thursday
+                fd_str = current.strftime("%Y-%m-%d")
+                if not any("jobless" in e["event"].lower() and e["date"] == fd_str for e in events):
+                    events.append({
+                        "date": fd_str,
+                        "time": "08:30",
+                        "country": "US",
+                        "event": "Initial Jobless Claims",
+                        "impact": "low",
+                        "actual": None,
+                        "estimate": None,
+                        "previous": None,
+                        "unit": "K",
+                    })
+            current += datetime.timedelta(days=1)
+
+    # Sort by date + impact
+    events.sort(key=lambda x: (x["date"], -IMPACT_ORDER.get(x["impact"], 0)))
+
+    # Group into this_week / next_week
+    today_iso = today.isocalendar()
+    this_week = []
+    next_week = []
+    rest = []
+    for ev in events:
+        try:
+            ev_date = datetime.date.fromisoformat(ev["date"])
+            ev_iso = ev_date.isocalendar()
+            if ev_iso[1] == today_iso[1] and ev_iso[0] == today_iso[0]:
+                this_week.append(ev)
+            elif ev_iso[1] == today_iso[1] + 1 and ev_iso[0] == today_iso[0]:
+                next_week.append(ev)
+            else:
+                rest.append(ev)
+        except Exception:
+            rest.append(ev)
+
+    high_impact_count = len([e for e in events if e["impact"] == "high"])
+
+    # Generate AI summary
+    high_events = [e for e in events if e["impact"] == "high"]
+    summary_parts = []
+
+    if high_events:
+        summary_parts.append(
+            f"{high_impact_count} événement{'s' if high_impact_count > 1 else ''} à fort impact dans les {days} prochains jours."
+        )
+        # Check for specific events
+        has_fomc = any("fomc" in e["event"].lower() for e in high_events)
+        has_cpi = any("cpi" in e["event"].lower() for e in high_events)
+        has_nfp = any("payroll" in e["event"].lower() or "nfp" in e["event"].lower() for e in high_events)
+
+        if has_fomc:
+            summary_parts.append(
+                "Réunion FOMC à venir — les marchés seront en mode 'wait and see' jusqu'à la décision. "
+                "Attendez-vous à une volatilité accrue sur les taux, le dollar et les indices."
+            )
+        if has_cpi:
+            summary_parts.append(
+                "Publication CPI imminente — c'est le chiffre le plus surveillé par la Fed. "
+                "Un CPI supérieur aux attentes renforcerait le dollar et pèserait sur les actions growth. "
+                "Un CPI inférieur aux attentes alimenterait les espoirs de baisse de taux."
+            )
+        if has_nfp:
+            summary_parts.append(
+                "Non-Farm Payrolls à surveiller — un marché du travail solide soutient la consommation "
+                "mais réduit les chances de baisse de taux. Un chiffre faible pourrait créer un rallye obligataire."
+            )
+    else:
+        summary_parts.append(
+            "Semaine relativement calme côté macro. Pas d'événements majeurs attendus, "
+            "ce qui laisse le champ libre aux catalyseurs micro (earnings, M&A, guidance)."
+        )
+
+    # Today highlights
+    today_events = [e for e in events if e["date"] == today.strftime("%Y-%m-%d")]
+    if today_events:
+        today_high = [e for e in today_events if e["impact"] == "high"]
+        if today_high:
+            summary_parts.append(
+                f"⚠️ AUJOURD'HUI: {', '.join(e['event'] for e in today_high)} — "
+                "restez vigilant, la volatilité intraday sera élevée."
+            )
+
+    ai_summary = " ".join(summary_parts)
+
+    return _sanitize({
+        "events": events,
+        "this_week": this_week,
+        "next_week": next_week,
+        "high_impact_count": high_impact_count,
+        "recurring_events": RECURRING_MACRO_EVENTS,
+        "ai_summary": ai_summary,
+    })
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
