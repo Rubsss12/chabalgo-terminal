@@ -19,6 +19,8 @@ import Screener from "@/components/Screener";
 import ETFTracker from "@/components/ETFTracker";
 import CompoundSimulator from "@/components/CompoundSimulator";
 import IPOWatchlist from "@/components/IPOWatchlist";
+import OptionsFlow from "@/components/OptionsFlow";
+import EconomicCalendar from "@/components/EconomicCalendar";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import Portfolio from "@/components/Portfolio";
 import { AnalysisData } from "@/lib/types";
@@ -228,12 +230,20 @@ export default function Home() {
 
           <PeerComparison ticker={data.ticker} />
 
+          <CollapsibleSection title="Options Flow" badge="SMART MONEY" defaultOpen={false}>
+            <OptionsFlow ticker={data.ticker} />
+          </CollapsibleSection>
+
           {/* Section divider */}
           <div className="flex items-center gap-3 pt-2">
             <div className="h-px flex-1 bg-border" />
             <span className="text-muted/50 text-[10px] tracking-[0.2em]">EXPLORE</span>
             <div className="h-px flex-1 bg-border" />
           </div>
+
+          <CollapsibleSection title="Calendrier Économique" badge="MACRO" defaultOpen={false}>
+            <EconomicCalendar />
+          </CollapsibleSection>
 
           <CollapsibleSection title="Congress Insider Trades" defaultOpen={false}>
             <CongressTrades ticker={data.ticker} onSelectTicker={handleSearch} />
@@ -296,13 +306,19 @@ export default function Home() {
             </div>
           </div>
           <div className="px-6 max-w-6xl mx-auto space-y-4 pb-10">
+            <CollapsibleSection title="Calendrier Économique" badge="MACRO" defaultOpen={true}>
+              <EconomicCalendar />
+            </CollapsibleSection>
+            <CollapsibleSection title="Options Flow Screener" badge="SMART MONEY" defaultOpen={true}>
+              <OptionsFlow onSearch={handleSearch} />
+            </CollapsibleSection>
             <CollapsibleSection title="IPO Watchlist 2026-2027" badge="MAJOR IPOs" defaultOpen={true}>
               <IPOWatchlist onSelectTicker={handleSearch} />
             </CollapsibleSection>
-            <CollapsibleSection title="Top ETFs Indiciels" badge="CTO & PEA" defaultOpen={true}>
+            <CollapsibleSection title="Top ETFs Indiciels" badge="CTO & PEA" defaultOpen={false}>
               <ETFTracker />
             </CollapsibleSection>
-            <CollapsibleSection title="Simulateur Intérêts Composés" defaultOpen={true}>
+            <CollapsibleSection title="Simulateur Intérêts Composés" defaultOpen={false}>
               <CompoundSimulator />
             </CollapsibleSection>
             <CollapsibleSection title="Compounder Screener" badge="INSTITUTIONAL" defaultOpen={false}>
