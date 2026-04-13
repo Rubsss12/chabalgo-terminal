@@ -173,9 +173,9 @@ export default function EarningsPanel({ ticker }: { ticker: string }) {
                   <Tooltip
                     contentStyle={{ backgroundColor: "#FFFFFF", border: "1px solid #E5E0DA", fontSize: "11px", borderRadius: 2 }}
                     labelStyle={{ color: "#8B8680" }}
-                    formatter={(value: number, name: string) => [
-                      `$${value?.toFixed(4) ?? "--"}`,
-                      name === "estimate" ? "Estimate" : "Actual",
+                    formatter={(value: unknown, name: unknown) => [
+                      `$${Number(value ?? 0).toFixed(4)}`,
+                      String(name) === "estimate" ? "Estimate" : "Actual",
                     ]}
                   />
                   <ReferenceLine y={0} stroke="#E5E0DA" />

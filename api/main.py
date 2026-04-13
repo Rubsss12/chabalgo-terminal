@@ -4391,6 +4391,951 @@ def economic_calendar(days: int = 14):
     })
 
 
+# =========================================================
+# SECTOR HEATMAP
+# =========================================================
+
+@app.get("/heatmap")
+def sector_heatmap(period: str = "1d"):
+    """Get sector performance heatmap data."""
+    results = {}
+
+    def _get_sector_perf(sector, tickers):
+        sector_data = []
+        for tk in tickers[:8]:  # limit per sector for speed
+            try:
+                t = yf.Ticker(tk)
+                if period == "1d":
+                    hist = t.history(period="2d")
+                    if len(hist) >= 2:
+                        change = ((hist["Close"].iloc[-1] - hist["Close"].iloc[-2]) / hist["Close"].iloc[-2]) * 100
+                    else:
+                        continue
+                elif period == "1w":
+                    hist = t.history(period="5d")
+                    if len(hist) >= 2:
+                        change = ((hist["Close"].iloc[-1] - hist["Close"].iloc[0]) / hist["Close"].iloc[0]) * 100
+                    else:
+                        continue
+                elif period == "1m":
+                    hist = t.history(period="1mo")
+                    if len(hist) >= 2:
+                        change = ((hist["Close"].iloc[-1] - hist["Close"].iloc[0]) / hist["Close"].iloc[0]) * 100
+                    else:
+                        continue
+                else:
+                    hist = t.history(period="2d")
+                    if len(hist) >= 2:
+                        change = ((hist["Close"].iloc[-1] - hist["Close"].iloc[-2]) / hist["Close"].iloc[-2]) * 100
+                    else:
+                        continue
+
+                price = round(float(hist["Close"].iloc[-1]), 2)
+                sector_data.append({
+                    "ticker": tk,
+                    "price": price,
+                    "change_pct": round(float(change), 2),
+                })
+            except Exception:
+                continue
+        return sector, sector_data
+
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = [executor.submit(_get_sector_perf, s, t) for s, t in SCREENER_SECTORS.items()]
+        for f in as_completed(futures):
+            try:
+                sector, data = f.result(timeout=20)
+                if data:
+                    avg_change = round(sum(d["change_pct"] for d in data) / len(data), 2)
+                    results[sector] = {
+                        "stocks": sorted(data, key=lambda x: x["change_pct"], reverse=True),
+                        "avg_change": avg_change,
+                        "count": len(data),
+                    }
+            except Exception:
+                pass
+
+    # Sort sectors by performance
+    sorted_sectors = sorted(results.items(), key=lambda x: x[1]["avg_change"], reverse=True)
+
+    return _sanitize({
+        "period": period,
+        "sectors": {s: d for s, d in sorted_sectors},
+    })
+
+
+# =========================================================
+# FEAR & GREED INDEX
+# =========================================================
+
+@app.get("/fear-greed")
+def fear_greed_index():
+    """Compute a market fear & greed composite index."""
+    signals = {}
+
+    try:
+        # 1. VIX (Fear gauge)
+        vix = yf.Ticker("^VIX")
+        vix_hist = vix.history(period="5d")
+        if not vix_hist.empty:
+            vix_val = float(vix_hist["Close"].iloc[-1])
+            signals["vix"] = {
+                "value": round(vix_val, 1),
+                "label": "VIX (Volatilité)",
+                "signal": "extreme_fear" if vix_val > 30 else "fear" if vix_val > 20 else "neutral" if vix_val > 15 else "greed" if vix_val > 12 else "extreme_greed",
+                "score": max(0, min(100, 100 - (vix_val - 10) * 2.5)),
+                "description": f"VIX à {round(vix_val, 1)} — {'volatilité extrême, panique sur les marchés' if vix_val > 30 else 'volatilité élevée, prudence' if vix_val > 20 else 'volatilité normale' if vix_val > 15 else 'faible volatilité, complaisance des marchés'}",
+            }
+    except Exception:
+        pass
+
+    try:
+        # 2. S&P 500 vs MA (Market Momentum)
+        spy = yf.Ticker("SPY")
+        spy_hist = spy.history(period="6mo")
+        if len(spy_hist) > 125:
+            current = float(spy_hist["Close"].iloc[-1])
+            ma125 = float(spy_hist["Close"].rolling(125).mean().iloc[-1])
+            pct_above = ((current - ma125) / ma125) * 100
+            signals["momentum"] = {
+                "value": round(pct_above, 1),
+                "label": "Momentum (SPY vs MA125)",
+                "signal": "extreme_greed" if pct_above > 10 else "greed" if pct_above > 5 else "neutral" if pct_above > -2 else "fear" if pct_above > -8 else "extreme_fear",
+                "score": max(0, min(100, 50 + pct_above * 4)),
+                "description": f"SPY est {'+' if pct_above > 0 else ''}{round(pct_above, 1)}% {'au-dessus' if pct_above > 0 else 'en-dessous'} de sa MA125 — {'momentum fortement haussier' if pct_above > 10 else 'tendance haussière établie' if pct_above > 5 else 'zone neutre' if pct_above > -2 else 'correction en cours' if pct_above > -8 else 'marché baissier'}",
+            }
+    except Exception:
+        pass
+
+    try:
+        # 3. Market Breadth (% stocks above MA50 proxy via sector leaders)
+        breadth_up = 0
+        breadth_total = 0
+        breadth_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA", "JPM", "JNJ", "V",
+                           "UNH", "XOM", "PG", "MA", "HD", "COST", "ABBV", "MRK", "PEP", "AVGO"]
+        for tk in breadth_tickers:
+            try:
+                t = yf.Ticker(tk)
+                h = t.history(period="3mo")
+                if len(h) >= 50:
+                    price = float(h["Close"].iloc[-1])
+                    ma50 = float(h["Close"].rolling(50).mean().iloc[-1])
+                    breadth_total += 1
+                    if price > ma50:
+                        breadth_up += 1
+            except Exception:
+                continue
+        if breadth_total > 0:
+            breadth_pct = (breadth_up / breadth_total) * 100
+            signals["breadth"] = {
+                "value": round(breadth_pct, 0),
+                "label": f"Market Breadth ({breadth_up}/{breadth_total} > MA50)",
+                "signal": "extreme_greed" if breadth_pct > 80 else "greed" if breadth_pct > 60 else "neutral" if breadth_pct > 40 else "fear" if breadth_pct > 20 else "extreme_fear",
+                "score": round(breadth_pct),
+                "description": f"{breadth_up}/{breadth_total} grandes capitalisations au-dessus de leur MA50 — {'large participation haussière' if breadth_pct > 70 else 'participation modérée' if breadth_pct > 50 else 'faible participation, marché sélectif' if breadth_pct > 30 else 'marché en détresse, peu de stocks tiennent'}",
+            }
+    except Exception:
+        pass
+
+    try:
+        # 4. Safe Haven Demand (Gold vs SPY 20d performance)
+        gold = yf.Ticker("GLD")
+        gold_h = gold.history(period="1mo")
+        spy_h = spy_hist if 'spy_hist' in dir() else yf.Ticker("SPY").history(period="1mo")
+        if len(gold_h) >= 15 and len(spy_h) >= 15:
+            gold_ret = ((float(gold_h["Close"].iloc[-1]) - float(gold_h["Close"].iloc[0])) / float(gold_h["Close"].iloc[0])) * 100
+            spy_ret = ((float(spy_h["Close"].iloc[-1]) - float(spy_h["Close"].iloc[0])) / float(spy_h["Close"].iloc[0])) * 100
+            diff = spy_ret - gold_ret  # positive = stocks beating gold = greed
+            signals["safe_haven"] = {
+                "value": round(diff, 1),
+                "label": "Safe Haven (SPY vs Gold 1M)",
+                "signal": "extreme_greed" if diff > 5 else "greed" if diff > 2 else "neutral" if diff > -2 else "fear" if diff > -5 else "extreme_fear",
+                "score": max(0, min(100, 50 + diff * 8)),
+                "description": f"Actions {'surperforment' if diff > 0 else 'sous-performent'} l'or de {abs(round(diff, 1))}% sur 1 mois — {'risk-on, appétit pour le risque' if diff > 3 else 'légère préférence pour le risque' if diff > 0 else 'fuite vers les valeurs refuges' if diff > -3 else 'panique, forte demande de safe haven'}",
+            }
+    except Exception:
+        pass
+
+    try:
+        # 5. Put/Call Ratio via major indices
+        spy_opt = yf.Ticker("SPY")
+        if spy_opt.options:
+            chain = spy_opt.option_chain(spy_opt.options[0])
+            def _safe_sum(df, col):
+                try:
+                    vals = df[col].dropna()
+                    return int(vals.sum()) if len(vals) > 0 else 0
+                except Exception:
+                    return 0
+            call_vol = _safe_sum(chain.calls, "volume")
+            put_vol = _safe_sum(chain.puts, "volume")
+            if call_vol > 0:
+                pcr = round(put_vol / call_vol, 2)
+                signals["put_call"] = {
+                    "value": pcr,
+                    "label": f"Put/Call Ratio SPY ({pcr})",
+                    "signal": "extreme_fear" if pcr > 1.5 else "fear" if pcr > 1.0 else "neutral" if pcr > 0.7 else "greed" if pcr > 0.5 else "extreme_greed",
+                    "score": max(0, min(100, 100 - (pcr - 0.5) * 80)),
+                    "description": f"Put/Call ratio SPY de {pcr} — {'panique, les traders achètent massivement des protections' if pcr > 1.5 else 'sentiment prudent, demande élevée de puts' if pcr > 1.0 else 'ratio équilibré' if pcr > 0.7 else 'optimisme dominant, peu de couverture' if pcr > 0.5 else 'euphorie extrême, aucune protection'}",
+                }
+    except Exception:
+        pass
+
+    # Composite score
+    if signals:
+        composite = round(sum(s["score"] for s in signals.values()) / len(signals))
+    else:
+        composite = 50
+
+    if composite >= 80:
+        verdict = "EXTREME GREED"
+        color = "red"
+        advice = "Euphorie sur les marchés. Historiquement, les périodes d'avidité extrême précèdent souvent des corrections. Soyez prudent, prenez des profits partiels et évitez le FOMO."
+    elif composite >= 60:
+        verdict = "GREED"
+        color = "green"
+        advice = "Sentiment haussier dominant. Les marchés sont confiants mais pas encore dans l'excès. Maintenez vos positions mais gardez du cash pour profiter d'un éventuel pullback."
+    elif composite >= 40:
+        verdict = "NEUTRAL"
+        color = "yellow"
+        advice = "Sentiment mitigé. Ni peur ni avidité excessive. C'est souvent un bon moment pour analyser les fondamentaux et se positionner sélectivement."
+    elif composite >= 20:
+        verdict = "FEAR"
+        color = "yellow"
+        advice = "La peur domine les marchés. Pour les investisseurs long-terme, c'est historiquement un meilleur point d'entrée que pendant les phases d'euphorie. 'Be greedy when others are fearful.'"
+    else:
+        verdict = "EXTREME FEAR"
+        color = "green"
+        advice = "Panique généralisée. Warren Buffett dirait d'acheter. Les marchés en panique créent les meilleures opportunités pour les investisseurs patients avec un horizon long terme."
+
+    return _sanitize({
+        "composite_score": composite,
+        "verdict": verdict,
+        "color": color,
+        "advice": advice,
+        "signals": signals,
+    })
+
+
+# =========================================================
+# INSIDER BUY SCREENER
+# =========================================================
+
+@app.get("/insider-screener")
+def insider_buy_screener():
+    """Scan stocks for recent insider buying clusters."""
+    scan_tickers = []
+    seen = set()
+    for tickers_list in SCREENER_SECTORS.values():
+        for t in tickers_list:
+            if t not in seen:
+                scan_tickers.append(t)
+                seen.add(t)
+    # Add mega caps
+    for t in ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD", "NFLX", "CRM", "ORCL", "INTC"]:
+        if t not in seen:
+            scan_tickers.append(t)
+            seen.add(t)
+
+    results = []
+
+    def _scan_insider(tk):
+        try:
+            resp = finnhub_get("/stock/insider-transactions", {"symbol": tk, "from": (datetime.date.today() - datetime.timedelta(days=90)).strftime("%Y-%m-%d")})
+            if not resp:
+                return None
+            txns = resp.get("data", [])
+            if not txns:
+                return None
+
+            buys = [t for t in txns if (t.get("transactionType") or "").lower() in ("p - purchase", "purchase", "p")]
+            sells = [t for t in txns if (t.get("transactionType") or "").lower() in ("s - sale", "sale", "s")]
+
+            if not buys:
+                return None
+
+            total_buy_value = 0
+            buy_count = len(buys)
+            unique_buyers = set()
+            for b in buys:
+                shares = abs(b.get("share", 0) or 0)
+                price = b.get("transactionPrice") or 0
+                total_buy_value += shares * price
+                name = b.get("name", "Unknown")
+                unique_buyers.add(name)
+
+            total_sell_value = 0
+            for s in sells:
+                shares = abs(s.get("share", 0) or 0)
+                price = s.get("transactionPrice") or 0
+                total_sell_value += shares * price
+
+            # Only include if meaningful buying
+            if total_buy_value < 50000:
+                return None
+
+            # Conviction score
+            conviction = 0
+            if total_buy_value > 1_000_000:
+                conviction += 40
+            elif total_buy_value > 500_000:
+                conviction += 30
+            elif total_buy_value > 100_000:
+                conviction += 20
+            else:
+                conviction += 10
+
+            if len(unique_buyers) >= 3:
+                conviction += 30  # cluster buying
+            elif len(unique_buyers) >= 2:
+                conviction += 20
+            else:
+                conviction += 10
+
+            if total_sell_value == 0:
+                conviction += 20  # no selling at all
+            elif total_buy_value > total_sell_value * 2:
+                conviction += 10
+
+            # Recency bonus
+            latest_buy_date = max(b.get("transactionDate", "") for b in buys)
+            try:
+                days_since = (datetime.date.today() - datetime.date.fromisoformat(latest_buy_date)).days
+                if days_since < 7:
+                    conviction += 10
+                elif days_since < 14:
+                    conviction += 5
+            except Exception:
+                pass
+
+            return {
+                "ticker": tk,
+                "buy_count": buy_count,
+                "unique_buyers": len(unique_buyers),
+                "total_buy_value": round(total_buy_value),
+                "total_sell_value": round(total_sell_value),
+                "conviction_score": min(100, conviction),
+                "latest_buy": latest_buy_date,
+                "buyers": list(unique_buyers)[:5],
+            }
+        except Exception:
+            return None
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(_scan_insider, tk): tk for tk in scan_tickers}
+        for f in as_completed(futures):
+            try:
+                result = f.result(timeout=10)
+                if result:
+                    results.append(result)
+            except Exception:
+                pass
+
+    results.sort(key=lambda x: x["conviction_score"], reverse=True)
+
+    # AI Summary
+    if results:
+        top = results[0]
+        summary = (
+            f"{len(results)} stocks avec des achats d'insiders significatifs sur les 90 derniers jours. "
+            f"Le signal le plus fort est sur {top['ticker']} avec {top['unique_buyers']} insiders distincts "
+            f"ayant acheté pour ${top['total_buy_value']:,} au total (score de conviction: {top['conviction_score']}/100). "
+        )
+        cluster_buys = [r for r in results if r["unique_buyers"] >= 3]
+        if cluster_buys:
+            summary += f"Achats en cluster (3+ insiders) détectés sur: {', '.join(r['ticker'] for r in cluster_buys[:5])}. Les clusters d'achats d'insiders sont historiquement un des signaux les plus fiables de surperformance future."
+    else:
+        summary = "Aucun achat d'insider significatif détecté sur les 90 derniers jours dans l'univers scanné."
+
+    return _sanitize({
+        "results": results[:20],
+        "total_found": len(results),
+        "ai_summary": summary,
+    })
+
+
+# =========================================================
+# AI DAILY BRIEFING
+# =========================================================
+
+@app.get("/daily-briefing")
+def daily_briefing():
+    """Generate a comprehensive daily market briefing."""
+    today = datetime.date.today()
+    sections = []
+
+    # 1. Major indices
+    indices_data = {}
+    for name, ticker in [("S&P 500", "^GSPC"), ("Nasdaq", "^IXIC"), ("Dow Jones", "^DJI"), ("Russell 2000", "^RUT"), ("VIX", "^VIX")]:
+        try:
+            t = yf.Ticker(ticker)
+            h = t.history(period="5d")
+            if len(h) >= 2:
+                current = round(float(h["Close"].iloc[-1]), 2)
+                prev = float(h["Close"].iloc[-2])
+                change = round(((current - prev) / prev) * 100, 2)
+                indices_data[name] = {"price": current, "change_pct": change}
+        except Exception:
+            continue
+
+    if indices_data:
+        sections.append({
+            "title": "Indices Majeurs",
+            "type": "indices",
+            "data": indices_data,
+        })
+
+    # 2. Sector movers (from screener sectors)
+    sector_moves = {}
+    for sector, tickers in list(SCREENER_SECTORS.items())[:6]:
+        sector_changes = []
+        for tk in tickers[:5]:
+            try:
+                t = yf.Ticker(tk)
+                h = t.history(period="2d")
+                if len(h) >= 2:
+                    change = ((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100
+                    sector_changes.append({"ticker": tk, "change": round(change, 2)})
+            except Exception:
+                continue
+        if sector_changes:
+            avg = round(sum(s["change"] for s in sector_changes) / len(sector_changes), 2)
+            best = max(sector_changes, key=lambda x: x["change"])
+            worst = min(sector_changes, key=lambda x: x["change"])
+            sector_moves[sector] = {
+                "avg_change": avg,
+                "best": best,
+                "worst": worst,
+            }
+
+    if sector_moves:
+        sections.append({
+            "title": "Performance Sectorielle",
+            "type": "sectors",
+            "data": dict(sorted(sector_moves.items(), key=lambda x: x[1]["avg_change"], reverse=True)),
+        })
+
+    # 3. Top movers in universe
+    all_movers = []
+    scan_tickers = list(set(tk for tl in SCREENER_SECTORS.values() for tk in tl))[:60]
+    def _get_change(tk):
+        try:
+            t = yf.Ticker(tk)
+            h = t.history(period="2d")
+            if len(h) >= 2:
+                price = round(float(h["Close"].iloc[-1]), 2)
+                change = round(((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100, 2)
+                return {"ticker": tk, "price": price, "change_pct": change}
+        except Exception:
+            pass
+        return None
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(_get_change, tk) for tk in scan_tickers]
+        for f in as_completed(futures):
+            try:
+                r = f.result(timeout=10)
+                if r:
+                    all_movers.append(r)
+            except Exception:
+                pass
+
+    if all_movers:
+        all_movers.sort(key=lambda x: x["change_pct"], reverse=True)
+        sections.append({
+            "title": "Top Movers",
+            "type": "movers",
+            "data": {
+                "gainers": all_movers[:5],
+                "losers": all_movers[-5:][::-1],
+            },
+        })
+
+    # 4. Economic events today
+    try:
+        cal = economic_calendar(days=1)
+        today_events = [e for e in cal.get("events", []) if e["date"] == today.strftime("%Y-%m-%d")]
+        if today_events:
+            sections.append({
+                "title": "Événements du Jour",
+                "type": "events",
+                "data": today_events,
+            })
+    except Exception:
+        pass
+
+    # Generate AI summary
+    summary_parts = [f"Briefing marché du {today.strftime('%d/%m/%Y')}."]
+
+    if indices_data:
+        sp = indices_data.get("S&P 500", {})
+        nq = indices_data.get("Nasdaq", {})
+        vix_d = indices_data.get("VIX", {})
+        if sp:
+            direction = "hausse" if sp.get("change_pct", 0) > 0 else "baisse"
+            summary_parts.append(f"S&P 500 en {direction} de {abs(sp.get('change_pct', 0))}%.")
+        if vix_d:
+            if vix_d.get("price", 15) > 25:
+                summary_parts.append(f"VIX élevé à {vix_d['price']} — volatilité accrue, prudence recommandée.")
+            elif vix_d.get("price", 15) < 15:
+                summary_parts.append(f"VIX bas à {vix_d['price']} — marchés calmes, potentiel de complaisance.")
+
+    if sector_moves:
+        best_sector = max(sector_moves.items(), key=lambda x: x[1]["avg_change"])
+        worst_sector = min(sector_moves.items(), key=lambda x: x[1]["avg_change"])
+        summary_parts.append(
+            f"Meilleur secteur: {best_sector[0]} ({'+' if best_sector[1]['avg_change'] > 0 else ''}{best_sector[1]['avg_change']}%). "
+            f"Pire secteur: {worst_sector[0]} ({'+' if worst_sector[1]['avg_change'] > 0 else ''}{worst_sector[1]['avg_change']}%)."
+        )
+
+    if all_movers:
+        summary_parts.append(
+            f"Plus forte hausse: {all_movers[0]['ticker']} (+{all_movers[0]['change_pct']}%). "
+            f"Plus forte baisse: {all_movers[-1]['ticker']} ({all_movers[-1]['change_pct']}%)."
+        )
+
+    return _sanitize({
+        "date": today.strftime("%Y-%m-%d"),
+        "sections": sections,
+        "ai_summary": " ".join(summary_parts),
+    })
+
+
+# =========================================================
+# FAIR VALUE / DCF CALCULATOR
+# =========================================================
+
+@app.get("/fair-value/{ticker}")
+def fair_value(ticker: str):
+    """Compute fair value estimate using multiple valuation methods."""
+    ticker = resolve_ticker(ticker)
+    try:
+        t = yf.Ticker(ticker)
+        info = t.info or {}
+    except Exception:
+        raise HTTPException(status_code=404, detail=f"Cannot fetch data for {ticker}")
+
+    fundamentals = get_fundamentals(ticker)
+    profile = get_company_profile(ticker)
+    name = (profile or {}).get("name", ticker)
+    current_price = info.get("currentPrice") or info.get("regularMarketPrice") or 0
+    currency = info.get("currency", "USD")
+
+    methods = []
+
+    # 1. PE-based valuation
+    eps = info.get("trailingEps")
+    fwd_eps = info.get("forwardEps")
+    sector_pe = info.get("sectorPE") or 22  # fallback S&P avg
+    if eps and eps > 0:
+        pe_fair = round(eps * sector_pe, 2)
+        methods.append({
+            "name": "PE Relative (Sector Avg)",
+            "value": pe_fair,
+            "detail": f"EPS trailing ${eps:.2f} x PE sector ~{sector_pe}",
+            "confidence": "medium",
+        })
+    if fwd_eps and fwd_eps > 0:
+        fwd_pe_fair = round(fwd_eps * sector_pe, 2)
+        methods.append({
+            "name": "Forward PE",
+            "value": fwd_pe_fair,
+            "detail": f"EPS forward ${fwd_eps:.2f} x PE sector ~{sector_pe}",
+            "confidence": "medium",
+        })
+
+    # 2. DCF simplified (using FCF growth)
+    fcf = info.get("freeCashflow")
+    shares = info.get("sharesOutstanding")
+    rev_growth = fundamentals.get("revenue_growth") if fundamentals else None
+    if fcf and shares and shares > 0 and fcf > 0:
+        growth_rate = min((rev_growth or 10) / 100, 0.25)  # cap at 25%
+        discount_rate = 0.10
+        terminal_growth = 0.03
+        fcf_per_share = fcf / shares
+        dcf_value = 0
+        projected_fcf = fcf_per_share
+        for yr in range(1, 11):
+            g = growth_rate if yr <= 5 else (growth_rate + terminal_growth) / 2
+            projected_fcf *= (1 + g)
+            dcf_value += projected_fcf / ((1 + discount_rate) ** yr)
+        # Terminal value
+        terminal_val = projected_fcf * (1 + terminal_growth) / (discount_rate - terminal_growth)
+        dcf_value += terminal_val / ((1 + discount_rate) ** 10)
+        dcf_value = round(dcf_value, 2)
+        methods.append({
+            "name": "DCF (10Y Projection)",
+            "value": dcf_value,
+            "detail": f"FCF/share ${fcf_per_share:.2f}, growth {growth_rate*100:.0f}%, discount 10%",
+            "confidence": "medium",
+        })
+
+    # 3. Price/Sales based
+    revenue = info.get("totalRevenue")
+    if revenue and shares and shares > 0:
+        rev_per_share = revenue / shares
+        # Use sector-appropriate P/S
+        ps_ratio = info.get("priceToSalesTrailing12Months") or 5
+        sector_ps = max(1, ps_ratio * 0.8)  # slight discount for fair value
+        ps_fair = round(rev_per_share * sector_ps, 2)
+        methods.append({
+            "name": "Price/Sales",
+            "value": ps_fair,
+            "detail": f"Revenue/share ${rev_per_share:.2f} x P/S {sector_ps:.1f}",
+            "confidence": "low" if ps_ratio > 15 else "medium",
+        })
+
+    # 4. Analyst target price
+    target = info.get("targetMeanPrice")
+    target_low = info.get("targetLowPrice")
+    target_high = info.get("targetHighPrice")
+    n_analysts = info.get("numberOfAnalystOpinions", 0)
+    if target:
+        methods.append({
+            "name": f"Analyst Consensus ({n_analysts} analysts)",
+            "value": round(target, 2),
+            "detail": f"Range: ${target_low or '?'} — ${target_high or '?'}",
+            "confidence": "high" if n_analysts >= 10 else "medium" if n_analysts >= 3 else "low",
+        })
+
+    # 5. Book value
+    book = info.get("bookValue")
+    if book and book > 0:
+        methods.append({
+            "name": "Book Value",
+            "value": round(book, 2),
+            "detail": f"Tangible book value per share",
+            "confidence": "low",
+        })
+
+    # Composite fair value (weighted average)
+    if methods:
+        weight_map = {"high": 3, "medium": 2, "low": 1}
+        total_w = sum(weight_map.get(m["confidence"], 1) for m in methods)
+        composite = round(sum(m["value"] * weight_map.get(m["confidence"], 1) for m in methods) / total_w, 2)
+    else:
+        composite = None
+
+    # Upside/downside
+    upside = round(((composite - current_price) / current_price) * 100, 1) if composite and current_price > 0 else None
+
+    # AI Summary
+    if composite and current_price > 0:
+        if upside and upside > 20:
+            verdict = "SOUS-ÉVALUÉ"
+            summary = f"Notre estimation composite de fair value pour {ticker} est de ${composite}, soit {upside}% au-dessus du prix actuel de ${current_price:.2f}. Selon nos {len(methods)} modèles de valorisation, le titre présente un potentiel de hausse significatif. "
+        elif upside and upside > 5:
+            verdict = "LÉGÈREMENT SOUS-ÉVALUÉ"
+            summary = f"Fair value estimée à ${composite} vs prix actuel ${current_price:.2f} ({upside}% upside). Le titre se négocie en-dessous de sa valeur intrinsèque estimée, avec une marge de sécurité modérée. "
+        elif upside and upside > -10:
+            verdict = "CORRECTEMENT VALORISÉ"
+            summary = f"Fair value estimée à ${composite} vs prix actuel ${current_price:.2f} ({upside}%). Le titre se négocie proche de sa valeur intrinsèque — ni sur-évalué ni sous-évalué. "
+        else:
+            verdict = "SUR-ÉVALUÉ"
+            summary = f"Fair value estimée à ${composite} vs prix actuel ${current_price:.2f} ({upside}%). Le prix actuel dépasse notre estimation de valeur intrinsèque. Prudence recommandée — une correction vers la fair value est possible. "
+
+        if target:
+            summary += f"Les analystes Wall Street visent ${target} en moyenne ({n_analysts} analystes)."
+    else:
+        verdict = "DONNÉES INSUFFISANTES"
+        summary = f"Pas assez de données financières pour estimer une fair value fiable pour {ticker}."
+
+    return _sanitize({
+        "ticker": ticker,
+        "name": name,
+        "current_price": round(current_price, 2) if current_price else None,
+        "currency": currency,
+        "composite_fair_value": composite,
+        "upside_pct": upside,
+        "verdict": verdict,
+        "methods": methods,
+        "analyst_target": {"mean": target, "low": target_low, "high": target_high, "count": n_analysts} if target else None,
+        "ai_summary": summary if composite else "Données insuffisantes pour l'analyse de valorisation.",
+    })
+
+
+# =========================================================
+# SWOT ANALYSIS
+# =========================================================
+
+@app.get("/swot/{ticker}")
+def swot_analysis(ticker: str):
+    """Generate a data-driven SWOT analysis."""
+    ticker = resolve_ticker(ticker)
+    fundamentals = get_fundamentals(ticker)
+    technicals = get_technicals(ticker)
+    profile = get_company_profile(ticker)
+
+    if not profile or not profile.get("name"):
+        raise HTTPException(status_code=404, detail=f"Cannot analyze {ticker}")
+
+    try:
+        t = yf.Ticker(ticker)
+        info = t.info or {}
+    except Exception:
+        info = {}
+
+    name = profile.get("name", ticker)
+    industry = profile.get("industry", "")
+    strengths, weaknesses, opportunities, threats = [], [], [], []
+
+    # === STRENGTHS ===
+    rev_growth = fundamentals.get("revenue_growth") if fundamentals else None
+    if rev_growth and rev_growth > 20:
+        strengths.append(f"Forte croissance du CA: +{rev_growth:.0f}% YoY — bien au-dessus du marché")
+    elif rev_growth and rev_growth > 10:
+        strengths.append(f"Croissance solide du CA: +{rev_growth:.0f}% YoY")
+
+    margin = fundamentals.get("profit_margin") if fundamentals else None
+    if margin and margin > 20:
+        strengths.append(f"Marges bénéficiaires élevées ({margin:.0f}%) — fort pricing power")
+    elif margin and margin > 10:
+        strengths.append(f"Marges bénéficiaires saines ({margin:.0f}%)")
+
+    roe = info.get("returnOnEquity")
+    if roe and roe > 0.20:
+        strengths.append(f"ROE excellent ({roe*100:.0f}%) — utilisation efficace des capitaux propres")
+
+    debt_eq = info.get("debtToEquity")
+    if debt_eq is not None and debt_eq < 50:
+        strengths.append(f"Faible endettement (D/E: {debt_eq:.0f}%) — bilan solide")
+
+    mcap = info.get("marketCap", 0)
+    if mcap and mcap > 100_000_000_000:
+        strengths.append("Mega-cap: liquidité maximale et accès au capital facilité")
+
+    rsi = technicals.get("rsi") if technicals else None
+    ma50_pos = technicals.get("price_vs_ma50") if technicals else None
+    if ma50_pos == "above" and rsi and 50 < rsi < 70:
+        strengths.append("Momentum technique positif — au-dessus de la MA50 avec RSI sain")
+
+    fcf = info.get("freeCashflow", 0)
+    if fcf and fcf > 0:
+        strengths.append(f"Free Cash Flow positif (${fcf/1e9:.1f}B) — autofinancement assuré")
+
+    # === WEAKNESSES ===
+    if rev_growth is not None and rev_growth < 0:
+        weaknesses.append(f"CA en déclin ({rev_growth:.0f}% YoY) — perte de momentum")
+    elif rev_growth is not None and rev_growth < 5:
+        weaknesses.append(f"Croissance faible ({rev_growth:.0f}% YoY) — difficulté à accélérer")
+
+    if margin is not None and margin < 0:
+        weaknesses.append(f"Entreprise non-profitable (marge nette: {margin:.0f}%)")
+    elif margin is not None and margin < 5:
+        weaknesses.append(f"Marges faibles ({margin:.0f}%) — vulnérable aux pressions sur les coûts")
+
+    pe = fundamentals.get("pe_ratio") if fundamentals else None
+    if pe and pe > 50:
+        weaknesses.append(f"Valorisation tendue (PE: {pe:.0f}x) — peu de marge d'erreur")
+    elif pe and pe > 35:
+        weaknesses.append(f"Valorisation élevée (PE: {pe:.0f}x) — expectations déjà intégrées")
+
+    if debt_eq is not None and debt_eq > 150:
+        weaknesses.append(f"Endettement élevé (D/E: {debt_eq:.0f}%) — risque de refinancement")
+
+    if rsi and rsi > 75:
+        weaknesses.append(f"RSI en surachat ({rsi:.0f}) — pullback technique probable à court terme")
+
+    if fcf and fcf < 0:
+        weaknesses.append(f"Free Cash Flow négatif — dépendance au financement externe")
+
+    beta = info.get("beta")
+    if beta and beta > 1.5:
+        weaknesses.append(f"Volatilité élevée (Beta: {beta:.1f}) — amplifie les mouvements de marché")
+
+    # === OPPORTUNITIES ===
+    # Check sector catalysts
+    stock_sector = None
+    for s, tl in SCREENER_SECTORS.items():
+        if ticker in tl:
+            stock_sector = s
+            break
+    catalysts = SECTOR_CATALYSTS.get(stock_sector, []) if stock_sector else []
+    for cat in catalysts[:2]:
+        if cat.get("impact") in ("very_high", "high"):
+            opportunities.append(f"Catalyseur: {cat['event']} ({cat['date']}) — {cat.get('description', '')[:100]}")
+
+    target = info.get("targetMeanPrice")
+    current = info.get("currentPrice") or 0
+    if target and current and target > current * 1.15:
+        opportunities.append(f"Consensus analyste: objectif ${target:.0f} (+{((target-current)/current*100):.0f}% upside)")
+
+    if rev_growth and rev_growth > 15:
+        opportunities.append("Trajectoire de croissance permet l'expansion des multiples")
+
+    fwd_pe = fundamentals.get("forward_pe") if fundamentals else None
+    if pe and fwd_pe and fwd_pe < pe * 0.8:
+        opportunities.append(f"Compression PE attendue ({pe:.0f}x → {fwd_pe:.0f}x) — earnings en accélération")
+
+    tam = info.get("totalRevenue", 0)
+    if tam and mcap and mcap < tam * 8 and rev_growth and rev_growth > 20:
+        opportunities.append("Pénétration de marché encore faible avec un TAM en expansion")
+
+    # === THREATS ===
+    if rsi and rsi < 30:
+        threats.append(f"RSI en survente ({rsi:.0f}) — momentum baissier établi")
+
+    ma200_pos = technicals.get("price_vs_ma200") if technicals else None
+    if ma200_pos == "below":
+        threats.append("Prix sous la MA200 — tendance baissière long terme")
+
+    if beta and beta > 2:
+        threats.append(f"Beta très élevé ({beta:.1f}) — extrêmement sensible aux corrections de marché")
+
+    if pe and pe > 60:
+        threats.append("Valorisation extrême — toute déception sur les résultats peut provoquer un décrochage de -20%+")
+
+    if debt_eq and debt_eq > 200:
+        threats.append("Risque de dette significatif — vulnérable en cas de hausse des taux")
+
+    short_pct = info.get("shortPercentOfFloat")
+    if short_pct and short_pct > 10:
+        threats.append(f"Short interest élevé ({short_pct:.0f}% du float) — pression vendeuse institutionnelle")
+
+    if not opportunities:
+        opportunities.append("Pas de catalyseur sectoriel identifié à court terme")
+    if not threats:
+        threats.append("Risques macro standards: taux d'intérêt, récession, géopolitique")
+    if not strengths:
+        strengths.append("Données insuffisantes pour identifier des forces claires")
+    if not weaknesses:
+        weaknesses.append("Aucune faiblesse majeure identifiée avec les données disponibles")
+
+    return _sanitize({
+        "ticker": ticker,
+        "name": name,
+        "industry": industry,
+        "strengths": strengths,
+        "weaknesses": weaknesses,
+        "opportunities": opportunities,
+        "threats": threats,
+    })
+
+
+# =========================================================
+# FINANCIAL STATEMENTS
+# =========================================================
+
+@app.get("/financials/{ticker}")
+def financial_statements(ticker: str):
+    """Get income statement, balance sheet, and cash flow data."""
+    ticker = resolve_ticker(ticker)
+    try:
+        t = yf.Ticker(ticker)
+        info = t.info or {}
+    except Exception:
+        raise HTTPException(status_code=404, detail=f"Cannot fetch {ticker}")
+
+    result = {"ticker": ticker, "name": info.get("shortName", ticker), "currency": info.get("currency", "USD")}
+
+    # Income Statement
+    try:
+        inc = t.income_stmt
+        if inc is not None and not inc.empty:
+            rows = []
+            for col in inc.columns[:4]:  # last 4 years
+                period = str(col.date()) if hasattr(col, 'date') else str(col)
+                row = {"period": period}
+                for idx in inc.index:
+                    val = inc.loc[idx, col]
+                    if val is not None and not (isinstance(val, float) and val != val):
+                        row[str(idx)] = float(val)
+                rows.append(row)
+            result["income_statement"] = rows
+    except Exception:
+        result["income_statement"] = []
+
+    # Balance Sheet
+    try:
+        bs = t.balance_sheet
+        if bs is not None and not bs.empty:
+            rows = []
+            for col in bs.columns[:4]:
+                period = str(col.date()) if hasattr(col, 'date') else str(col)
+                row = {"period": period}
+                for idx in bs.index:
+                    val = bs.loc[idx, col]
+                    if val is not None and not (isinstance(val, float) and val != val):
+                        row[str(idx)] = float(val)
+                rows.append(row)
+            result["balance_sheet"] = rows
+    except Exception:
+        result["balance_sheet"] = []
+
+    # Cash Flow
+    try:
+        cf = t.cashflow
+        if cf is not None and not cf.empty:
+            rows = []
+            for col in cf.columns[:4]:
+                period = str(col.date()) if hasattr(col, 'date') else str(col)
+                row = {"period": period}
+                for idx in cf.index:
+                    val = cf.loc[idx, col]
+                    if val is not None and not (isinstance(val, float) and val != val):
+                        row[str(idx)] = float(val)
+                rows.append(row)
+            result["cash_flow"] = rows
+    except Exception:
+        result["cash_flow"] = []
+
+    return _sanitize(result)
+
+
+# =========================================================
+# STOCK COMPARISON
+# =========================================================
+
+@app.get("/compare")
+def compare_stocks(tickers: str):
+    """Compare multiple stocks side-by-side. tickers= comma-separated."""
+    ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()][:6]
+    if len(ticker_list) < 2:
+        raise HTTPException(status_code=400, detail="Need at least 2 tickers (comma-separated)")
+
+    results = []
+    for tk in ticker_list:
+        try:
+            t = yf.Ticker(resolve_ticker(tk))
+            info = t.info or {}
+            hist = t.history(period="1y")
+
+            price = info.get("currentPrice") or info.get("regularMarketPrice") or 0
+            prev = info.get("previousClose") or 0
+            change_pct = round(((price - prev) / prev) * 100, 2) if prev > 0 else 0
+
+            # 1Y return
+            ret_1y = None
+            if not hist.empty and len(hist) > 50:
+                ret_1y = round(((float(hist["Close"].iloc[-1]) - float(hist["Close"].iloc[0])) / float(hist["Close"].iloc[0])) * 100, 1)
+
+            results.append({
+                "ticker": tk,
+                "name": info.get("shortName", tk),
+                "price": round(float(price), 2) if price else None,
+                "change_pct": change_pct,
+                "market_cap": info.get("marketCap"),
+                "pe_ratio": round(float(info["trailingPE"]), 1) if info.get("trailingPE") else None,
+                "forward_pe": round(float(info["forwardPE"]), 1) if info.get("forwardPE") else None,
+                "revenue_growth": round(info.get("revenueGrowth", 0) * 100, 1) if info.get("revenueGrowth") else None,
+                "profit_margin": round(info.get("profitMargins", 0) * 100, 1) if info.get("profitMargins") else None,
+                "roe": round(info.get("returnOnEquity", 0) * 100, 1) if info.get("returnOnEquity") else None,
+                "debt_to_equity": round(float(info["debtToEquity"]), 0) if info.get("debtToEquity") else None,
+                "dividend_yield": round(info.get("dividendYield", 0) * 100, 2) if info.get("dividendYield") else None,
+                "beta": round(float(info["beta"]), 2) if info.get("beta") else None,
+                "rsi": round(float(get_technicals(tk).get("rsi", 0)), 1) if get_technicals(tk) else None,
+                "return_1y": ret_1y,
+                "eps": round(float(info["trailingEps"]), 2) if info.get("trailingEps") else None,
+                "fcf": info.get("freeCashflow"),
+                "analyst_target": info.get("targetMeanPrice"),
+                "analyst_count": info.get("numberOfAnalystOpinions", 0),
+            })
+        except Exception:
+            results.append({"ticker": tk, "name": tk, "error": True})
+
+    return _sanitize({"tickers": ticker_list, "results": results})
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

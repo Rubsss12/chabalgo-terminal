@@ -320,9 +320,9 @@ export default function CompoundSimulator() {
                   }}
                   labelStyle={{ color: "#8B8680" }}
                   labelFormatter={(v) => `Année ${Math.round(Number(v))}`}
-                  formatter={(value: number, name: string) => [
-                    formatEUR(value),
-                    name === "invested" ? "Somme investie" : name === "balance" ? "Capital total" : "Intérêts",
+                  formatter={(value: unknown, name: unknown) => [
+                    formatEUR(Number(value ?? 0)),
+                    String(name) === "invested" ? "Somme investie" : String(name) === "balance" ? "Capital total" : "Intérêts",
                   ]}
                 />
                 <Legend
