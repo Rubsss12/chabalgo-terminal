@@ -191,7 +191,7 @@ export default function ETFTracker() {
                         borderRadius: 2,
                       }}
                       labelStyle={{ color: "#8B8680" }}
-                      formatter={(value: number, name: string) => [`${value.toFixed(1)}`, name]}
+                      formatter={(value: unknown, name: unknown) => [`${Number(value ?? 0).toFixed(1)}`, String(name)]}
                     />
                     <Legend
                       wrapperStyle={{ fontSize: 10 }}
