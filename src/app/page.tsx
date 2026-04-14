@@ -31,12 +31,16 @@ import FairValue from "@/components/FairValue";
 import SwotAnalysis from "@/components/SwotAnalysis";
 import FinancialStatements from "@/components/FinancialStatements";
 import StockComparison from "@/components/StockComparison";
+import SectorDeepDive from "@/components/SectorDeepDive";
+import MacroDashboard from "@/components/MacroDashboard";
+import SECFilings from "@/components/SECFilings";
+import DCFValuation from "@/components/DCFValuation";
 import { AnalysisData } from "@/lib/types";
 import { fetchAnalysis } from "@/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type LandingTab = "market" | "screeners" | "invest";
+type LandingTab = "sectors" | "overview" | "screeners" | "invest";
 
 interface MiniIndex {
   name: string;
@@ -49,7 +53,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [landingTab, setLandingTab] = useState<LandingTab>("market");
+  const [landingTab, setLandingTab] = useState<LandingTab>("sectors");
+  const [deepDiveSector, setDeepDiveSector] = useState<string | null>(null);
   const [indices, setIndices] = useState<MiniIndex[]>([]);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentTickerRef = useRef<string | null>(null);
@@ -272,6 +277,8 @@ export default function Home() {
             <SwotAnalysis ticker={data.ticker} />
           </div>
 
+          <DCFValuation ticker={data.ticker} />
+
           {/* --- ANALYSIS --- */}
           <SectionDivider label="ANALYSIS" />
 
@@ -293,6 +300,10 @@ export default function Home() {
           </div>
 
           <PeerComparison ticker={data.ticker} />
+
+          <CollapsibleSection title="SEC Filings" badge="EDGAR" defaultOpen={false}>
+            <SECFilings ticker={data.ticker} />
+          </CollapsibleSection>
 
           <CollapsibleSection title="Options Flow" badge="SMART MONEY" defaultOpen={false}>
             <OptionsFlow ticker={data.ticker} />
@@ -361,14 +372,26 @@ export default function Home() {
       )}
 
       {/* ========================================= */}
+      {/* SECTOR DEEP DIVE VIEW                     */}
+      {/* ========================================= */}
+      {deepDiveSector && !data && !loading && (
+        <SectorDeepDive
+          sectorKey={deepDiveSector}
+          onClose={() => setDeepDiveSector(null)}
+          onSearch={(ticker) => { setDeepDiveSector(null); handleSearch(ticker); }}
+        />
+      )}
+
+      {/* ========================================= */}
       {/* LANDING DASHBOARD                         */}
       {/* ========================================= */}
-      {!data && !loading && !error && (
+      {!data && !loading && !error && !deepDiveSector && (
         <div className="max-w-7xl mx-auto px-6 pb-10">
           {/* Tab navigation */}
           <div className="flex items-center border-b border-border mb-0">
             {([
-              { key: "market" as LandingTab, label: "MARKET", icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" },
+              { key: "sectors" as LandingTab, label: "SECTORS", icon: "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" },
+              { key: "overview" as LandingTab, label: "OVERVIEW", icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" },
               { key: "screeners" as LandingTab, label: "SCREENERS", icon: "M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" },
               { key: "invest" as LandingTab, label: "INVESTIR", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
             ]).map((tab) => (
@@ -392,13 +415,94 @@ export default function Home() {
           {/* Tab content */}
           <div className="pt-5 tab-content-enter" key={landingTab}>
 
-            {/* ===== MARKET TAB ===== */}
-            {landingTab === "market" && (
+            {/* ===== SECTORS TAB (PRIMARY) ===== */}
+            {landingTab === "sectors" && (
+              <div className="space-y-6">
+                {/* Hero tagline */}
+                <div className="text-center py-2">
+                  <h2 className="text-[13px] text-foreground font-semibold tracking-wide">Sector Intelligence</h2>
+                  <p className="text-[10px] text-muted/50 mt-0.5">Deep research reports with experts, bottlenecks & trade ideas</p>
+                </div>
+
+                {/* Featured sectors — large cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    { key: "photonics-optical", name: "Photonics & Optical", tagline: "Le backbone invisible de l'IA", color: "from-blue-500/8 to-cyan-500/5 border-blue-500/15", accentColor: "text-blue-400", badge: "HOT", badgeBg: "bg-red/80 text-white", stocks: "COHR, AAOI, LITE, CIEN", desc: "800G/1.6T transceivers, supply chain optique datacenter" },
+                    { key: "ai-infrastructure", name: "AI Infrastructure", tagline: "Le cycle CapEx le plus massif de l'histoire", color: "from-purple-500/8 to-violet-500/5 border-purple-500/15", accentColor: "text-purple-400", badge: "MEGA", badgeBg: "bg-purple-500/80 text-white", stocks: "SMCI, PATH, AI, SOUN", desc: "$200B+ hyperscaler spend, GPU clusters, AI software" },
+                    { key: "space-defense-tech", name: "Space & Defense", tagline: "NewSpace 2.0 — de la R&D au commercial", color: "from-slate-500/8 to-zinc-500/5 border-slate-500/15", accentColor: "text-slate-300", badge: "GROWTH", badgeBg: "bg-accent/80 text-white", stocks: "RKLB, ASTS, LUNR, PL", desc: "Lanceurs, constellations LEO, imagerie satellite" },
+                  ].map((s) => (
+                    <button
+                      key={s.key}
+                      onClick={() => setDeepDiveSector(s.key)}
+                      className={`relative bg-gradient-to-br ${s.color} border rounded-sm p-5 text-left transition-all hover:shadow-lg hover:scale-[1.01] group overflow-hidden`}
+                    >
+                      <div className="absolute top-3 right-3">
+                        <span className={`text-[7px] px-1.5 py-0.5 rounded-sm font-black tracking-widest ${s.badgeBg}`}>{s.badge}</span>
+                      </div>
+                      <div className={`text-[10px] font-bold tracking-wider mb-1 ${s.accentColor}`}>{s.name}</div>
+                      <div className="text-[13px] font-bold text-foreground leading-snug mb-2 group-hover:text-accent transition-colors">{s.tagline}</div>
+                      <div className="text-[9px] text-foreground/50 leading-relaxed mb-3">{s.desc}</div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-[8px] text-muted/40 font-mono">{s.stocks}</div>
+                        <div className="flex items-center gap-1 text-[9px] text-accent opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span>Deep Dive</span>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* All sectors grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {[
+                    { key: "cybersecurity-ai", name: "Cybersecurity AI", icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", desc: "Plateformes zero-trust, IA defensive", stocks: "CRWD, ZS, S, RBRK" },
+                    { key: "robotics-automation", name: "Robotics & Automation", icon: "M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z", desc: "Chirurgie robotique, eVTOL, automation industrielle", stocks: "ISRG, JOBY, ACHR, TER" },
+                    { key: "synthetic-biology-genomics", name: "Synthetic Biology", icon: "M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z", desc: "CRISPR, therapies geniques, drug discovery IA", stocks: "CRSP, BEAM, TXG, RXRX" },
+                    { key: "fintech-infrastructure", name: "Fintech Infrastructure", icon: "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z", desc: "Neobanques, BNPL, paiements embedded", stocks: "SOFI, AFRM, HOOD, BILL" },
+                    { key: "clean-energy-grid", name: "Clean Energy & Grid", icon: "M13 10V3L4 14h7v7l9-11h-7z", desc: "Solaire, stockage batteries, EV charging", stocks: "ENPH, RUN, QS, CHPT" },
+                    { key: "edge-computing-iot", name: "Edge Computing & IoT", icon: "M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01", desc: "Edge AI, CDN, IoT industriel, 5G MEC", stocks: "NET, PSTG, UI, ESTC" },
+                  ].map((s) => (
+                    <button
+                      key={s.key}
+                      onClick={() => setDeepDiveSector(s.key)}
+                      className="bg-card border border-border rounded-sm p-4 text-left hover:border-accent/25 hover:shadow-sm transition-all group"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-accent/8 rounded-sm flex items-center justify-center flex-shrink-0 group-hover:bg-accent/15 transition-colors">
+                          <svg className="w-4 h-4 text-accent/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d={s.icon} />
+                          </svg>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-bold tracking-wider text-foreground group-hover:text-accent transition-colors">{s.name}</div>
+                          <div className="text-[9px] text-foreground/50 leading-relaxed mt-0.5">{s.desc}</div>
+                          <div className="text-[8px] text-muted/35 font-mono mt-1.5">{s.stocks}</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Quick market context */}
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                  <div className="lg:col-span-2">
+                    <FearGreedIndex />
+                  </div>
+                  <div className="lg:col-span-3">
+                    <SectorHeatmap onSearch={handleSearch} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ===== OVERVIEW TAB ===== */}
+            {landingTab === "overview" && (
               <div className="space-y-5">
-                {/* Daily Briefing */}
                 <DailyBriefing onSearch={handleSearch} />
 
-                {/* Fear/Greed + Heatmap */}
+                <MacroDashboard />
+
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
                   <div className="lg:col-span-2">
                     <FearGreedIndex />
@@ -408,7 +512,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Calendar */}
                 <EconomicCalendar />
               </div>
             )}
@@ -416,7 +519,6 @@ export default function Home() {
             {/* ===== SCREENERS TAB ===== */}
             {landingTab === "screeners" && (
               <div className="space-y-5">
-                {/* Quick cards row */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
                     { label: "Options Flow", desc: "Unusual activity scanner", color: "text-red", bg: "bg-red/5 border-red/15" },
@@ -431,19 +533,16 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Options + Insiders */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <OptionsFlow onSearch={handleSearch} />
                   <InsiderScreener onSearch={handleSearch} />
                 </div>
 
-                {/* IPO + Compounder */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <IPOWatchlist onSelectTicker={handleSearch} />
                   <Screener onSelectTicker={handleSearch} />
                 </div>
 
-                {/* Congress */}
                 <CongressTrades onSelectTicker={handleSearch} />
               </div>
             )}

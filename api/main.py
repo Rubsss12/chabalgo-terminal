@@ -5336,6 +5336,1197 @@ def compare_stocks(tickers: str):
     return _sanitize({"tickers": ticker_list, "results": results})
 
 
+# =========================================================
+# SECTOR DEEP DIVE
+# =========================================================
+
+SECTOR_SLUGS = {s.lower().replace(" & ", "-").replace(" ", "-"): s for s in SCREENER_SECTORS}
+
+# Curated sector theses — real investment context for each sector
+SECTOR_THESES = {
+    "Photonics & Optical": {
+        "headline": "La révolution optique : le backbone invisible de l'IA",
+        "why_now": "Chaque dollar investi en GPU nécessite $0.30-0.50 en composants optiques. La transition vers les transceivers 800G/1.6T pour les datacenters IA crée une demande sans précédent. Les carnets de commandes des acteurs photoniques explosent — c'est le picks & shovels play de la révolution IA.",
+        "bull_case": "Le marché des transceivers IA pourrait tripler d'ici 2027. Les déploiements 800G commencent à peine et le 1.6T arrive. Chaque nouveau cluster GPU (Nvidia B200, AMD MI400) génère des commandes massives en optique. Les margins s'améliorent avec le volume et le mix produit premium.",
+        "bear_case": "Risque de surcapacité si les dépenses IA ralentissent. Compression des marges via la concurrence chinoise (Innolight, Eoptolink). Dépendance excessive à 2-3 hyperscalers. Les valorisations intègrent déjà beaucoup de croissance future.",
+        "experts": [
+            {"name": "Serenity", "platform": "X / Twitter", "handle": "@SesijOnThe1", "focus": "Deep dives photonics & optical supply chain, analyse technique des small/mid caps optiques", "why_follow": "Analyses sectorielles parmi les plus complètes sur les transceivers IA et la chaîne de valeur optique"},
+            {"name": "Alan Chua", "platform": "X / Twitter", "handle": "@AlanChuaTrader", "focus": "Semi-conducteurs & photonics, flux institutionnels, catalystes earnings", "why_follow": "Trader actif sur les optiques avec un track record documenté sur AAOI, COHR, LITE"},
+            {"name": "Lightcounting", "platform": "Industry Reports", "handle": "lightcounting.com", "focus": "Données de marché transceivers, prévisions shipments 800G/1.6T", "why_follow": "Source de référence de l'industrie pour les données de marché des composants optiques"},
+        ],
+        "bottlenecks": [
+            {"name": "Capacité de production 800G/1.6T", "severity": "critical", "detail": "La demande de transceivers 800G dépasse largement la capacité installée. Les fabs de Coherent, II-VI et AAOI tournent à plein. Le passage au 1.6T nécessite de nouvelles lignes de production qui prennent 12-18 mois à monter en puissance."},
+            {"name": "Supply chain Indium Phosphide (InP)", "severity": "high", "detail": "Les lasers InP sont le composant critique des transceivers haut débit. Peu de fournisseurs maîtrisent la production de wafers InP de qualité. Un goulot d'étranglement ici bloque toute la chaîne optique."},
+            {"name": "Concurrence chinoise (Innolight, Eoptolink)", "severity": "medium", "detail": "Les fabricants chinois produisent des transceivers 400G/800G à des coûts 30-40% inférieurs. Risque de compression des marges pour les acteurs US/EU si les barrières commerciales s'assouplissent."},
+            {"name": "Packaging & co-packaging optique", "severity": "high", "detail": "L'intégration de l'optique directement dans les packages GPU/ASIC (co-packaged optics) est le saint graal mais techniquement très complexe. Qui résoudra ce problème en premier prendra une avance massive."},
+        ],
+        "key_players": [
+            {"ticker": "COHR", "role": "Leader transceivers 800G", "moat": "Verticalement intégré (lasers + transceivers), #1 mondial en volume"},
+            {"ticker": "AAOI", "role": "Pure play transceivers IA", "moat": "Le plus exposé à la demande datacenter IA, croissance explosive du backlog"},
+            {"ticker": "LITE", "role": "Composants laser & détecteurs", "moat": "Leader en lasers InP, fournisseur critique de la chaîne optique"},
+            {"ticker": "CIEN", "role": "Systèmes réseau optique", "moat": "WaveLogic 6 — technologie de modulation cohérente de pointe"},
+        ],
+    },
+    "AI Infrastructure": {
+        "headline": "L'infrastructure IA : le cycle d'investissement le plus massif de l'histoire tech",
+        "why_now": "Les hyperscalers (MSFT, GOOGL, AMZN, META) dépenseront $200B+ en infrastructure IA en 2026. C'est la plus grande vague de CapEx tech depuis le déploiement du cloud. Les fournisseurs de hardware, software et services IA capturent une part croissante de ces budgets.",
+        "bull_case": "L'IA générative n'est qu'au début de son adoption enterprise. Chaque secteur va intégrer l'IA, multipliant la demande d'infrastructure. Les modèles deviennent plus grands, nécessitant toujours plus de compute. Les marges des fournisseurs d'infrastructure s'améliorent avec l'échelle.",
+        "bear_case": "Bulle de valorisation potentielle — beaucoup d'acteurs sont pre-profit. Risque de concentration client (dépendance aux hyperscalers). L'open-source pourrait commoditiser le software IA. Les ROI de l'IA enterprise restent à prouver à grande échelle.",
+        "experts": [
+            {"name": "Dylan Patel", "platform": "SemiAnalysis", "handle": "@dyaborodan", "focus": "Analyses techniques des puces IA, architectures GPU/TPU, supply chain semi", "why_follow": "La meilleure source technique sur les architectures IA et les choix stratégiques des hyperscalers"},
+            {"name": "Fabricated Knowledge", "platform": "Substack", "handle": "@FabsKnowledge", "focus": "Semi-conducteurs, ASIC design, infrastructure compute", "why_follow": "Analyses approfondies de l'infrastructure IA avec un angle semi-conducteur unique"},
+            {"name": "Gavin Baker", "platform": "X / Twitter", "handle": "@GavinSBaker", "focus": "Tech investing, IA infrastructure thesis, mega-cap analysis", "why_follow": "Fund manager reconnu avec des thèses macro-tech pertinentes sur le cycle IA"},
+        ],
+        "bottlenecks": [
+            {"name": "Capacité TSMC / CoWoS packaging", "severity": "critical", "detail": "TSMC ne peut pas produire assez de packages CoWoS (Chip-on-Wafer-on-Substrate) pour les GPU H100/B200. C'est LE bottleneck #1 de l'infrastructure IA mondiale. Les délais d'allocation sont de 6-12 mois."},
+            {"name": "Énergie & refroidissement datacenter", "severity": "high", "detail": "Un cluster de 100K GPU B200 consomme ~200MW. Les sites avec alimentation électrique suffisante et permis de construction deviennent rares. Le refroidissement liquide est nécessaire mais l'infrastructure est encore immature."},
+            {"name": "Mémoire HBM (High Bandwidth Memory)", "severity": "high", "detail": "La HBM3e est critique pour les GPU IA. SK Hynix domine avec 90%+ de parts de marché. Samsung et Micron peinent à rattraper. La demande dépasse la capacité de 30-40%."},
+            {"name": "Talent IA & ML Engineers", "severity": "medium", "detail": "La guerre des talents en ML engineering limite la capacité d'absorption des entreprises. Les salaires explosent. Les petites entreprises IA peinent à recruter face aux FAANG."},
+        ],
+        "key_players": [
+            {"ticker": "SMCI", "role": "Serveurs IA sur-mesure", "moat": "Time-to-market le plus rapide, refroidissement liquide intégré, partenaire clé Nvidia"},
+            {"ticker": "PATH", "role": "Automatisation IA enterprise", "moat": "Plateforme RPA + IA la plus déployée, forte base clients Fortune 500"},
+            {"ticker": "AI", "role": "IA enterprise & analytics", "moat": "Solutions IA pour l'industrie et le gouvernement US, contrats long-terme"},
+            {"ticker": "SOUN", "role": "Voice AI", "moat": "Leader en IA vocale pour restaurants et automotive, croissance revenue >50%"},
+        ],
+    },
+    "Space & Defense Tech": {
+        "headline": "NewSpace 2.0 : la commercialisation de l'espace s'accélère",
+        "why_now": "SpaceX a prouvé le modèle. Maintenant Rocket Lab, AST SpaceMobile et d'autres passent de la R&D à la commercialisation. Les budgets défense augmentent mondialement. L'IPO potentielle de Starlink revaloriserait tout le secteur spatial.",
+        "bull_case": "Le marché spatial commercial devrait atteindre $1T d'ici 2040. Les coûts de lancement ont été divisés par 10. Les constellations LEO (Starlink, AST) créent des revenus récurrents. Les gouvernements augmentent massivement leurs budgets spatiaux.",
+        "bear_case": "La plupart des pure-plays sont encore en perte. Les retards de lancement et échecs techniques restent un risque. Dépendance aux contrats gouvernementaux. Concurrence croissante (SpaceX domine et fixe les prix).",
+        "experts": [
+            {"name": "Payload Space", "platform": "Newsletter", "handle": "@payaboroadspace", "focus": "Actualité spatiale commerciale, lancements, contrats, M&A", "why_follow": "La newsletter de référence pour suivre l'industrie spatiale commerciale au quotidien"},
+            {"name": "Sami Siddiqui", "platform": "X / Twitter", "handle": "@Space_Sami", "focus": "Analyses fondamentales des space stocks, valorisation, catalystes", "why_follow": "Deep dives détaillés sur RKLB, ASTS et les métriques financières du secteur spatial"},
+            {"name": "Rick Tumlinson", "platform": "SpaceNews", "handle": "@SpaceFund", "focus": "Venture capital spatial, tendances macro NewSpace", "why_follow": "Vision long-terme du secteur spatial par un investisseur early-stage reconnu"},
+        ],
+        "bottlenecks": [
+            {"name": "Cadence de lancement", "severity": "high", "detail": "Malgré les progrès de SpaceX et Rocket Lab, les slots de lancement restent limités. Les retards d'un lanceur impactent toute la chaîne de déploiement des constellations. Electron ne lance que toutes les 2-3 semaines."},
+            {"name": "Regulatory (FCC, ITU, spectrum)", "severity": "high", "detail": "L'allocation de spectre pour les constellations LEO est un processus lent et politique. AST SpaceMobile dépend de l'approbation FCC pour son service commercial. Les conflits de spectre avec les telcos ralentissent le déploiement."},
+            {"name": "Supply chain composants spatiaux", "severity": "medium", "detail": "Les composants rad-hard (résistants aux radiations) restent chers et en quantité limitée. La qualification spatiale ajoute 12-24 mois aux cycles de développement."},
+        ],
+        "key_players": [
+            {"ticker": "RKLB", "role": "Lanceur small-sat + spacecraft", "moat": "Seul lanceur commercial small-sat opérationnel hors SpaceX, expansion vers medium-lift avec Neutron"},
+            {"ticker": "ASTS", "role": "Broadband satellite direct-to-cell", "moat": "Technologie unique de connectivité satellite vers smartphone standard, partenariats AT&T/Vodafone"},
+            {"ticker": "LUNR", "role": "Services lunaires", "moat": "Contrats NASA CLPS pour livraisons lunaires, premier atterrissage privé sur la Lune"},
+            {"ticker": "PL", "role": "Imagerie satellite", "moat": "Plus grande constellation d'observation terrestre, scans quotidiens de la Terre entière"},
+        ],
+    },
+    "Cybersecurity AI": {
+        "headline": "Cybersécurité IA : la dépense obligatoire de chaque entreprise",
+        "why_now": "L'explosion des cyberattaques IA (deepfakes, phishing automatisé) force les entreprises à upgrader massivement. Les régulations (NIS2, DORA) imposent des standards plus élevés. La cybersécurité est le seul poste IT que personne ne coupe, même en récession.",
+        "bull_case": "Le marché de la cybersécurité croît de 15-20%/an structurellement. Les plateformes consolidées (CrowdStrike, Zscaler) prennent des parts aux solutions legacy. L'IA augmente à la fois la menace et la défense, créant un cycle vertueux pour les leaders.",
+        "bear_case": "Multiples de valorisation élevés (>15x revenue pour les leaders). Pression sur les budgets IT en cas de récession. Risque de commoditisation des fonctionnalités de base. Consolidation M&A à des primes élevées.",
+        "experts": [
+            {"name": "Nik Schah", "platform": "X / Twitter", "handle": "@NikSchah", "focus": "Cybersecurity stocks, earnings analysis, competitive dynamics", "why_follow": "Analyses earnings détaillées et comparaisons compétitives entre CrowdStrike, Zscaler, SentinelOne"},
+            {"name": "Thomas Monteiro", "platform": "Investing.com", "handle": "@montaboriro_trades", "focus": "Tech & cyber sector analysis, macro overlay", "why_follow": "Vue d'ensemble du secteur cyber avec un contexte macro pertinent"},
+        ],
+        "bottlenecks": [
+            {"name": "Pénurie de talents cybersécurité", "severity": "critical", "detail": "3.5M de postes cybersécurité non pourvus mondialement. Les entreprises ne peuvent pas déployer les solutions achetées faute de personnel qualifié. C'est le principal frein à l'adoption."},
+            {"name": "Alert fatigue & intégration", "severity": "high", "detail": "Les SOC (Security Operations Centers) sont submergés d'alertes. L'intégration de multiples outils de sécurité reste un cauchemar. Les plateformes unifiées (CRWD, S) résolvent ce problème mais la migration est lente."},
+            {"name": "Menaces IA adverses", "severity": "high", "detail": "Les attaquants utilisent l'IA pour créer des malwares polymorphiques et du phishing indétectable. La course aux armements IA force des investissements R&D constants."},
+        ],
+        "key_players": [
+            {"ticker": "CRWD", "role": "Plateforme endpoint #1", "moat": "Falcon platform avec IA native, ~25% du marché endpoint, expansion vers SIEM/SOAR"},
+            {"ticker": "ZS", "role": "Zero Trust Network Access", "moat": "Leader ZTNA, proxy cloud natif, transition SD-WAN vers SSE"},
+            {"ticker": "S", "role": "IA XDR & cloud security", "moat": "Singularity platform, IA autonome pour la détection, croissance >30%"},
+            {"ticker": "RBRK", "role": "Data security & backup", "moat": "Zero Trust data protection, leader cyber-recovery post-attaque"},
+        ],
+    },
+    "Fintech Infrastructure": {
+        "headline": "Fintech 3.0 : les rails financiers de demain",
+        "why_now": "Après la correction de 2022-2023, les fintechs sont revenues à des valorisations raisonnables avec des métriques améliorées. Les IPOs de Stripe/Klarna fixeront de nouveaux benchmarks. L'embedded finance et les paiements en temps réel créent de nouvelles couches de revenus.",
+        "bull_case": "La digitalisation des paiements est irréversible. Les fintechs deviennent profitables (SoFi, Affirm approchent le breakeven). Le BNPL se normalise comme mode de paiement. L'expansion internationale multiplie le TAM.",
+        "bear_case": "Risque de crédit en cas de récession (BNPL, prêts). Les taux élevés compriment les marges. Concurrence des banques traditionnelles qui investissent dans le digital. Régulations croissantes (CFPB, PSD3).",
+        "experts": [
+            {"name": "Simon Taylor", "platform": "Fintech Brainfood", "handle": "@sytaylor", "focus": "Newsletter fintech de référence, infrastructure paiements, banking-as-a-service", "why_follow": "Probablement la meilleure newsletter fintech — vision stratégique et analyse des business models"},
+            {"name": "Jason Mikula", "platform": "Fintech Business Weekly", "handle": "@FinTechWeekly", "focus": "Régulation fintech, crédit, compliance, CFPB", "why_follow": "Spécialiste des enjeux réglementaires qui impactent les valorisations fintech"},
+        ],
+        "bottlenecks": [
+            {"name": "Risque de crédit consumer", "severity": "high", "detail": "Les taux de défaut BNPL et consumer lending augmentent. En cas de récession, les portefeuilles AFRM, SOFI subiraient des pertes significatives. Le provisionnement pèse sur les marges."},
+            {"name": "Régulation & compliance", "severity": "high", "detail": "CFPB aux US, PSD3 en Europe, nouvelles règles BNPL — le coût de compliance augmente. Certains modèles (earned wage access, crypto lending) font face à des risques existentiels réglementaires."},
+            {"name": "Unit economics des néobanques", "severity": "medium", "detail": "Acquérir un client coûte cher, le monétiser reste difficile. Le revenu moyen par utilisateur des néobanques reste bien inférieur aux banques traditionnelles."},
+        ],
+        "key_players": [
+            {"ticker": "SOFI", "role": "Néobanque tout-en-un", "moat": "Licence bancaire, cross-sell lending + invest + banking, premier trimestre profitable"},
+            {"ticker": "AFRM", "role": "BNPL leader US", "moat": "Intégration Amazon/Shopify, modèle 0% intérêt consommateur, network effect merchant"},
+            {"ticker": "HOOD", "role": "Brokerage nouvelle génération", "moat": "Democratization du trading, crypto + options, base utilisateurs massive (24M+)"},
+            {"ticker": "BILL", "role": "Paiements B2B PME", "moat": "Automatisation AP/AR pour PME, 450K+ clients, forte rétention"},
+        ],
+    },
+    "Robotics & Automation": {
+        "headline": "L'ère des robots : de la chirurgie aux entrepôts",
+        "why_now": "La pénurie de main-d'œuvre post-COVID accélère l'adoption. Les robots chirurgicaux (Intuitive Surgical) se déploient dans les marchés émergents. Les drones autonomes et eVTOL (Joby, Archer) approchent de la certification FAA.",
+        "bull_case": "Le marché de la robotique devrait doubler d'ici 2030. L'IA rend les robots plus autonomes et polyvalents. ISRG domine la chirurgie robotique avec des marges de 70%+. Les eVTOL ouvrent un marché de $1T en mobilité aérienne.",
+        "bear_case": "Les eVTOL sont encore pre-revenue avec des certifications incertaines. La robotique industrielle est cyclique. Valorisations extrêmes pour les pure-plays non-profitables. Risques réglementaires pour les drones autonomes.",
+        "experts": [
+            {"name": "Ark Invest", "platform": "Research", "handle": "@CathieDWood", "focus": "Robotics thématique, autonomous mobility, convergence IA + robotique", "why_follow": "Thèses long-terme sur la convergence technologique robotique/IA avec des modèles de valorisation détaillés"},
+            {"name": "Peter Diamandis", "platform": "X / Abundance360", "handle": "@PeterDiamandis", "focus": "Technologies exponentielles, drones, eVTOL, longevity", "why_follow": "Vision macro des technologies disruptives et leur timeline d'adoption"},
+        ],
+        "bottlenecks": [
+            {"name": "Certification FAA / EASA pour eVTOL", "severity": "critical", "detail": "Joby et Archer attendent la certification FAA pour voler commercialement. Le processus est inédit (nouveau type d'aéronef) et les retards sont fréquents. Chaque mois de retard brûle du cash sans revenue."},
+            {"name": "Coût des batteries & range", "severity": "high", "detail": "Les eVTOL sont limités à 50-100 miles de range. Les batteries sont lourdes et coûteuses. Sans percée significative en densité énergétique, les cas d'usage restent limités aux trajets courts."},
+            {"name": "Adoption chirurgie robotique dans les marchés émergents", "severity": "medium", "detail": "Le Da Vinci (ISRG) coûte $1.5-2M. Les hôpitaux des marchés émergents ne peuvent pas absorber ce CapEx. Le modèle as-a-service est en cours mais lent à déployer."},
+        ],
+        "key_players": [
+            {"ticker": "ISRG", "role": "Chirurgie robotique dominante", "moat": "Da Vinci installé dans 7000+ hôpitaux, modèle razor/blade (instruments à usage unique), marges 70%+"},
+            {"ticker": "JOBY", "role": "eVTOL air taxi", "moat": "Le plus avancé dans la certification FAA, partenariat Toyota, design le plus efficace"},
+            {"ticker": "ACHR", "role": "eVTOL urbain", "moat": "Midnight aircraft optimisé pour back-to-back trips, commandes UAL/United Airlines"},
+            {"ticker": "TER", "role": "Test & automatisation semi", "moat": "Teradyne domine le test de semi-conducteurs + robots collaboratifs (Universal Robots)"},
+        ],
+    },
+    "Clean Energy & Grid": {
+        "headline": "La transition énergétique : entre subventions et réalité de marché",
+        "why_now": "L'IRA (Inflation Reduction Act) injecte $369B dans l'énergie propre. La demande électrique explose avec les datacenters IA (+15-20% attendu). Le stockage par batteries atteint la parité économique dans de plus en plus de marchés.",
+        "bull_case": "La transition énergétique est un méga-trend de $4T. Les subventions IRA garantissent la demande pour 10 ans. Les datacenters IA nécessitent une énergie massive et propre. Le solaire est maintenant la source d'énergie la moins chère dans la majorité des marchés.",
+        "bear_case": "Beaucoup d'acteurs sont en difficulté financière (Stem, ChargePoint brûlent du cash). Risque politique sur les subventions. Surcapacité chinoise en panneaux solaires comprime les prix. Taux d'intérêt élevés pèsent sur les projets capitalistiques.",
+        "experts": [
+            {"name": "BloombergNEF", "platform": "Research", "handle": "@BloombergNEF", "focus": "Données de marché énergie propre, prévisions installations, coûts technologiques", "why_follow": "La source de données de référence pour les marchés de l'énergie propre et le stockage"},
+            {"name": "Kingsmill Bond", "platform": "RMI / Carbon Tracker", "handle": "@KingsmillBond", "focus": "Transition énergétique macro, peak demand fossile, tipping points", "why_follow": "Analyses macro sur la vitesse de la transition et ses implications pour les marchés"},
+        ],
+        "bottlenecks": [
+            {"name": "Interconnexion grid & permitting", "severity": "critical", "detail": "Aux US, la queue d'attente pour connecter un projet renouvelable au réseau est de 5+ ans avec 2000+ GW en attente. Le bottleneck n'est plus le coût solaire mais la capacité du réseau à l'absorber."},
+            {"name": "Supply chain panneaux solaires (Chine)", "severity": "high", "detail": "La Chine contrôle 80%+ de la chaîne de valeur solaire. Les tarifs douaniers et les enjeux de travail forcé (Ouïghours) compliquent l'approvisionnement. L'onshoring est en cours mais prend des années."},
+            {"name": "Stockage longue durée", "severity": "medium", "detail": "Les batteries lithium-ion couvrent 4h de stockage. Pour une grid 100% renouvelable il faut du stockage 8-12h+. Les technologies alternatives (iron-air, flow batteries) sont encore immatures."},
+        ],
+        "key_players": [
+            {"ticker": "ENPH", "role": "Micro-onduleurs solaires résidentiels", "moat": "Architecture micro-onduleur supérieure, marges >40%, expansion batteries + EV charging"},
+            {"ticker": "RUN", "role": "Solar-as-a-service résidentiel", "moat": "Modèle PPA (power purchase agreement), revenus récurrents 25 ans, #1 installation US"},
+            {"ticker": "QS", "role": "Batteries solid-state", "moat": "Technologie lithium-metal potentiellement révolutionnaire, partenariat VW, si ça marche = game changer"},
+            {"ticker": "CHPT", "role": "Réseau de recharge EV", "moat": "Plus grand réseau de bornes US, modèle SaaS pour fleet management"},
+        ],
+    },
+    "Synthetic Biology & Genomics": {
+        "headline": "La bio-révolution : éditer le vivant pour soigner l'incurable",
+        "why_now": "Les premières thérapies CRISPR sont approuvées (Casgevy). Les pipelines de thérapies géniques entrent en phase III. Le coût du séquençage génomique continue de chuter, démocratisant la médecine de précision.",
+        "bull_case": "Le marché de la thérapie génique pourrait atteindre $50B d'ici 2030. Les premières approbations FDA valident la technologie. La biologie synthétique s'étend au-delà de la santé (agriculture, matériaux). Les données génomiques alimentent des découvertes IA accélérées.",
+        "bear_case": "Les biotech sont intrinsèquement risquées (échecs cliniques). Timelines très longues de la R&D à la commercialisation. Pricing pressure des payeurs (assurances, gouvernements). Risques éthiques et réglementaires.",
+        "experts": [
+            {"name": "Brad Loncar", "platform": "X / Twitter", "handle": "@BradLoncar", "focus": "Biotech investing, index loncar cancer immunotherapy, gene therapy", "why_follow": "Investisseur biotech respecté avec des analyses accessibles sur les thérapies de nouvelle génération"},
+            {"name": "Andrew Baum", "platform": "Citi Research", "handle": "Citi Healthcare", "focus": "Gene therapy market sizing, FDA regulatory trends, pricing dynamics", "why_follow": "Analyste sell-side de référence pour les valorisations biotech et les prévisions réglementaires"},
+        ],
+        "bottlenecks": [
+            {"name": "Manufacturing AAV vectors", "severity": "critical", "detail": "Les vecteurs AAV (adeno-associated virus) sont le véhicule de livraison principal des thérapies géniques. La production est complexe, coûteuse et difficile à scaler. Les CMOs sont débordés."},
+            {"name": "Pricing & reimbursement", "severity": "high", "detail": "Les thérapies géniques coûtent $1-3M par patient. Les systèmes de santé peinent à absorber ces coûts. Les modèles de paiement innovants (pay-for-performance, annuity) sont en cours de test mais pas encore standard."},
+            {"name": "Delivery beyond liver", "severity": "high", "detail": "Les lipid nanoparticles (LNP) et AAV ciblent principalement le foie. Atteindre le cerveau, les muscles ou les poumons de façon efficace et sûre reste un défi majeur de la prochaine génération."},
+        ],
+        "key_players": [
+            {"ticker": "CRSP", "role": "CRISPR therapeutics pioneer", "moat": "Casgevy approuvé (première thérapie CRISPR), pipeline drépanocytose + oncologie"},
+            {"ticker": "BEAM", "role": "Base editing next-gen", "moat": "Base editing plus précis que CRISPR classique, pipeline cardiovasculaire prometteur"},
+            {"ticker": "TXG", "role": "Single-cell genomics platform", "moat": "Chromium platform = standard de l'industrie pour l'analyse single-cell, utilisé dans 95%+ des publis"},
+            {"ticker": "RXRX", "role": "AI drug discovery", "moat": "Plus grande base de données biologiques au monde, partenariats pharma (Roche, Bayer)"},
+        ],
+    },
+    "Edge Computing & IoT": {
+        "headline": "Le edge computing : rapprocher l'intelligence des données",
+        "why_now": "L'IA en temps réel nécessite du compute au plus près des utilisateurs. Les déploiements 5G créent de nouvelles opportunités edge. Les datacenters décentralisés de Cloudflare et Fastly deviennent critiques pour la latence IA.",
+        "bull_case": "Le marché du edge computing croît de 30%+/an. L'IA en edge réduit les coûts cloud et améliore la latence. L'IoT industriel génère des volumes de données massifs à traiter localement. La 5G+ nécessite des architectures edge.",
+        "bear_case": "Fragmentation du marché avec trop d'acteurs. AWS/Azure/GCP dominent le cloud et s'étendent vers le edge. Beaucoup d'acteurs sont en perte. La monétisation de l'IoT reste un défi.",
+        "experts": [
+            {"name": "Matt Beal", "platform": "Edge Computing World", "handle": "@EdgeComputingW", "focus": "Edge computing trends, 5G MEC, industrial IoT deployments", "why_follow": "Vue d'ensemble de l'écosystème edge avec des cas d'usage concrets par industrie"},
+            {"name": "Cloudflare Blog", "platform": "Blog technique", "handle": "blog.cloudflare.com", "focus": "Workers AI, edge AI inference, CDN innovation", "why_follow": "Aperçu direct de la roadmap du leader edge avec des benchmarks techniques détaillés"},
+        ],
+        "bottlenecks": [
+            {"name": "Fragmentation des standards IoT", "severity": "high", "detail": "Matter, Thread, Zigbee, Z-Wave... trop de standards concurrents empêchent l'interopérabilité. Sans standard unifié, l'IoT grand public stagne et les coûts d'intégration enterprise restent élevés."},
+            {"name": "Sécurité des devices edge", "severity": "high", "detail": "Les devices IoT sont des points d'entrée pour les cyberattaques. Beaucoup n'ont pas de mécanisme de mise à jour sécurisé. Chaque device connecté augmente la surface d'attaque."},
+            {"name": "Monétisation du compute edge", "severity": "medium", "detail": "Le modèle économique du edge computing reste flou. Les workloads qui justifient le surcoût vs cloud centralisé sont encore limités (gaming, AR/VR, véhicules autonomes)."},
+        ],
+        "key_players": [
+            {"ticker": "NET", "role": "Edge platform dominante", "moat": "Réseau global 310+ villes, Workers platform pour serverless edge, AI inference en edge"},
+            {"ticker": "PSTG", "role": "Stockage flash haute perf", "moat": "Pure flash storage, DirectFlash + Evergreen model, transition vers STaaS"},
+            {"ticker": "UI", "role": "Networking & IoT entreprise", "moat": "Ubiquiti — hardware réseau premium à prix disruptif, marges >30%, 0 sales force"},
+            {"ticker": "ESTC", "role": "Search & observabilité", "moat": "Elastic Stack = standard observabilité, expansion SIEM, utilisé par 50%+ du Fortune 500"},
+        ],
+    },
+}
+
+_deepdive_cache: Dict[str, Any] = {}
+
+
+def _deepdive_stock_data(ticker: str):
+    """Fetch comprehensive data for a single stock in a sector deep dive."""
+    try:
+        t = yf.Ticker(ticker)
+        info = t.info or {}
+        hist = t.history(period="6mo")
+        hist_1m = t.history(period="1mo")
+
+        price = info.get("currentPrice") or info.get("regularMarketPrice") or 0
+        prev = info.get("previousClose") or 0
+        change_pct = round(((price - prev) / prev) * 100, 2) if prev > 0 else 0
+        mcap = info.get("marketCap", 0)
+
+        # Returns
+        ret_1m, ret_3m, ret_6m = None, None, None
+        if not hist.empty and len(hist) > 5:
+            current = float(hist["Close"].iloc[-1])
+            if len(hist_1m) > 5:
+                ret_1m = round(((current - float(hist_1m["Close"].iloc[0])) / float(hist_1m["Close"].iloc[0])) * 100, 1)
+            if len(hist) > 60:
+                ret_3m = round(((current - float(hist["Close"].iloc[-min(63, len(hist))])) / float(hist["Close"].iloc[-min(63, len(hist))])) * 100, 1)
+            ret_6m = round(((current - float(hist["Close"].iloc[0])) / float(hist["Close"].iloc[0])) * 100, 1)
+
+        # Volume vs average
+        vol_avg = None
+        if not hist.empty and len(hist) > 20:
+            avg_vol = hist["Volume"].iloc[-20:].mean()
+            last_vol = hist["Volume"].iloc[-1]
+            if avg_vol > 0:
+                vol_avg = round(float(last_vol) / float(avg_vol), 2)
+
+        # Technicals
+        techs = get_technicals(ticker) or {}
+        rsi = techs.get("rsi")
+        ma50 = techs.get("ma50")
+        ma200 = techs.get("ma200")
+        ma50_pos = techs.get("price_vs_ma50", "")
+        ma200_pos = techs.get("price_vs_ma200", "")
+
+        # Signal
+        signal = "neutral"
+        if rsi and ma50_pos:
+            if rsi > 50 and ma50_pos == "above" and ma200_pos == "above":
+                signal = "bullish"
+            elif rsi > 60 and ma50_pos == "above":
+                signal = "bullish"
+            elif rsi < 40 and ma50_pos == "below":
+                signal = "bearish"
+            elif rsi < 30:
+                signal = "bearish"
+
+        return {
+            "ticker": ticker,
+            "name": info.get("shortName", ticker),
+            "price": round(float(price), 2) if price else None,
+            "change_pct": change_pct,
+            "market_cap": mcap,
+            "market_cap_b": round(mcap / 1e9, 1) if mcap else None,
+            "pe": round(float(info["trailingPE"]), 1) if info.get("trailingPE") else None,
+            "forward_pe": round(float(info["forwardPE"]), 1) if info.get("forwardPE") else None,
+            "revenue_growth": round(info.get("revenueGrowth", 0) * 100, 1) if info.get("revenueGrowth") else None,
+            "gross_margin": round(info.get("grossMargins", 0) * 100, 1) if info.get("grossMargins") else None,
+            "profit_margin": round(info.get("profitMargins", 0) * 100, 1) if info.get("profitMargins") else None,
+            "rsi": round(float(rsi), 1) if rsi else None,
+            "ma50": round(float(ma50), 2) if ma50 else None,
+            "ma200": round(float(ma200), 2) if ma200 else None,
+            "signal": signal,
+            "return_1m": ret_1m,
+            "return_3m": ret_3m,
+            "return_6m": ret_6m,
+            "volume_vs_avg": vol_avg,
+            "analyst_target": round(float(info["targetMeanPrice"]), 2) if info.get("targetMeanPrice") else None,
+            "upside_pct": round(((info["targetMeanPrice"] - price) / price) * 100, 1) if info.get("targetMeanPrice") and price > 0 else None,
+            "beta": round(float(info["beta"]), 2) if info.get("beta") else None,
+            "eps": round(float(info["trailingEps"]), 2) if info.get("trailingEps") else None,
+            "dividend_yield": round(info.get("dividendYield", 0) * 100, 2) if info.get("dividendYield") else None,
+        }
+    except Exception:
+        return {"ticker": ticker, "name": ticker, "error": True}
+
+
+@app.get("/sector-deepdive/{sector_slug}")
+def sector_deepdive(sector_slug: str):
+    """Comprehensive sector deep dive — investment research report style."""
+
+    # Resolve slug to sector name
+    sector_name = SECTOR_SLUGS.get(sector_slug.lower())
+    if not sector_name:
+        # Try direct match
+        for key in SCREENER_SECTORS:
+            if key.lower() == sector_slug.lower().replace("-", " ").replace("&", "&"):
+                sector_name = key
+                break
+    if not sector_name:
+        raise HTTPException(status_code=404, detail=f"Sector '{sector_slug}' not found. Available: {list(SECTOR_SLUGS.keys())}")
+
+    # Check cache (5 min TTL)
+    cache_key = sector_name
+    now = _time.time()
+    if cache_key in _deepdive_cache:
+        cached = _deepdive_cache[cache_key]
+        if now - cached["_ts"] < 300:
+            return cached["data"]
+
+    tickers = SCREENER_SECTORS[sector_name]
+
+    # Fetch all stock data in parallel
+    stocks = []
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(_deepdive_stock_data, tk): tk for tk in tickers}
+        for f in as_completed(futures):
+            try:
+                result = f.result()
+                if result and not result.get("error"):
+                    stocks.append(result)
+            except Exception:
+                pass
+
+    # Sort by market cap descending
+    stocks.sort(key=lambda s: s.get("market_cap") or 0, reverse=True)
+
+    # Fetch news for top 4 tickers by market cap
+    news_items = []
+    for tk in [s["ticker"] for s in stocks[:4]]:
+        try:
+            tk_news = get_news(tk)
+            if tk_news:
+                for n in tk_news[:3]:
+                    news_items.append({
+                        "headline": n.get("headline", ""),
+                        "source": n.get("source", ""),
+                        "url": n.get("url", ""),
+                        "datetime": n.get("datetime"),
+                        "summary": n.get("summary", "")[:200],
+                        "related_ticker": tk,
+                    })
+        except Exception:
+            pass
+    # Deduplicate by headline prefix
+    seen_headlines = set()
+    unique_news = []
+    for n in news_items:
+        prefix = n["headline"][:50]
+        if prefix not in seen_headlines:
+            seen_headlines.add(prefix)
+            unique_news.append(n)
+    news_items = unique_news[:12]
+
+    # Catalysts
+    catalysts = SECTOR_CATALYSTS.get(sector_name, [])
+
+    # === SECTOR PERFORMANCE ===
+    valid_stocks = [s for s in stocks if not s.get("error")]
+    def _avg(key):
+        vals = [s[key] for s in valid_stocks if s.get(key) is not None]
+        return round(sum(vals) / len(vals), 1) if vals else None
+
+    avg_change_1d = _avg("change_pct")
+    avg_ret_1m = _avg("return_1m")
+    avg_ret_3m = _avg("return_3m")
+    avg_ret_6m = _avg("return_6m")
+    avg_rsi = _avg("rsi")
+    avg_pe = _avg("pe")
+    avg_rev_growth = _avg("revenue_growth")
+    avg_margin = _avg("profit_margin")
+    avg_beta = _avg("beta")
+
+    best_6m = max(valid_stocks, key=lambda s: s.get("return_6m") or -999) if valid_stocks else None
+    worst_6m = min(valid_stocks, key=lambda s: s.get("return_6m") or 999) if valid_stocks else None
+
+    performance = {
+        "avg_return_1d": avg_change_1d,
+        "avg_return_1m": avg_ret_1m,
+        "avg_return_3m": avg_ret_3m,
+        "avg_return_6m": avg_ret_6m,
+        "avg_rsi": avg_rsi,
+        "avg_pe": avg_pe,
+        "avg_revenue_growth": avg_rev_growth,
+        "avg_profit_margin": avg_margin,
+        "sector_beta": avg_beta,
+        "best_performer": {"ticker": best_6m["ticker"], "return_6m": best_6m.get("return_6m")} if best_6m else None,
+        "worst_performer": {"ticker": worst_6m["ticker"], "return_6m": worst_6m.get("return_6m")} if worst_6m else None,
+        "stock_count": len(valid_stocks),
+    }
+
+    # === TOP PICKS (composite scoring) ===
+    for s in valid_stocks:
+        score = 0
+        # Revenue growth (25%)
+        rg = s.get("revenue_growth")
+        if rg is not None:
+            score += min(rg / 50 * 25, 25) if rg > 0 else max(rg / 20 * 5, -10)
+        # Momentum — 3m return (20%)
+        r3 = s.get("return_3m")
+        if r3 is not None:
+            score += min(r3 / 60 * 20, 20) if r3 > 0 else max(r3 / 30 * 5, -10)
+        # Analyst upside (20%)
+        up = s.get("upside_pct")
+        if up is not None:
+            score += min(up / 40 * 20, 20) if up > 0 else max(up / 20 * 5, -10)
+        # RSI health — 50 is neutral, 30-70 is healthy (15%)
+        rsi_val = s.get("rsi")
+        if rsi_val is not None:
+            if 40 <= rsi_val <= 65:
+                score += 15
+            elif 30 <= rsi_val <= 70:
+                score += 10
+            elif rsi_val > 75:
+                score += 2
+            else:
+                score += 5
+        # Margin quality (20%)
+        gm = s.get("gross_margin")
+        if gm is not None:
+            score += min(gm / 60 * 20, 20) if gm > 0 else 0
+        s["_pick_score"] = round(score, 1)
+
+    ranked = sorted(valid_stocks, key=lambda s: s.get("_pick_score", 0), reverse=True)
+
+    top_picks = []
+    for s in ranked[:3]:
+        price = s.get("price") or 0
+        ma50_val = s.get("ma50") or price * 0.95
+        ma200_val = s.get("ma200") or price * 0.85
+        entry_low = round(min(ma50_val, price * 0.95), 2)
+        entry_high = round(price * 1.02, 2)
+        target = s.get("analyst_target") or round(price * 1.25, 2)
+        stop = round(min(ma200_val, price * 0.85), 2)
+        rr = round((target - price) / (price - stop), 1) if price > stop else 0
+
+        conviction = "HIGH" if s.get("_pick_score", 0) > 55 else "MEDIUM" if s.get("_pick_score", 0) > 35 else "LOW"
+
+        # Generate reasoning
+        reasons = []
+        if s.get("revenue_growth") and s["revenue_growth"] > 20:
+            reasons.append(f"croissance CA +{s['revenue_growth']:.0f}%")
+        if s.get("return_3m") and s["return_3m"] > 15:
+            reasons.append(f"momentum 3M +{s['return_3m']:.0f}%")
+        if s.get("upside_pct") and s["upside_pct"] > 15:
+            reasons.append(f"upside analyste +{s['upside_pct']:.0f}%")
+        if s.get("gross_margin") and s["gross_margin"] > 40:
+            reasons.append(f"marges brutes {s['gross_margin']:.0f}%")
+        if s.get("signal") == "bullish":
+            reasons.append("signal technique bullish")
+        reasoning = ". ".join(reasons[:3]).capitalize() if reasons else "Profil technique et fondamental favorable"
+
+        top_picks.append({
+            "ticker": s["ticker"],
+            "name": s.get("name", s["ticker"]),
+            "price": price,
+            "conviction": conviction,
+            "score": s.get("_pick_score", 0),
+            "reasoning": reasoning,
+            "entry_zone": {"low": entry_low, "high": entry_high},
+            "target": round(target, 2),
+            "stop_loss": stop,
+            "risk_reward": f"{rr}:1" if rr > 0 else "N/A",
+            "return_6m": s.get("return_6m"),
+            "rsi": s.get("rsi"),
+        })
+
+    # === RISK ASSESSMENT ===
+    risk_factors = []
+    risk_score = 0
+
+    # Valuation
+    if avg_pe and avg_pe > 40:
+        risk_factors.append({"name": "Valorisation tendue", "level": "high", "detail": f"PE moyen du secteur à {avg_pe:.0f}x — intègre beaucoup de croissance future"})
+        risk_score += 25
+    elif avg_pe and avg_pe > 25:
+        risk_factors.append({"name": "Valorisation modérée", "level": "medium", "detail": f"PE moyen à {avg_pe:.0f}x — raisonnable si la croissance se maintient"})
+        risk_score += 12
+
+    # Momentum overextension
+    if avg_rsi and avg_rsi > 65:
+        risk_factors.append({"name": "Momentum en surchauffe", "level": "high", "detail": f"RSI moyen à {avg_rsi:.0f} — un pullback technique est probable"})
+        risk_score += 20
+    elif avg_rsi and avg_rsi > 55:
+        risk_factors.append({"name": "Momentum positif", "level": "low", "detail": f"RSI moyen à {avg_rsi:.0f} — zone saine"})
+        risk_score += 5
+
+    # Volatility
+    if avg_beta and avg_beta > 1.5:
+        risk_factors.append({"name": "Volatilité élevée", "level": "high", "detail": f"Beta moyen {avg_beta:.1f} — amplifie les mouvements du marché"})
+        risk_score += 20
+    elif avg_beta and avg_beta > 1.2:
+        risk_factors.append({"name": "Volatilité modérée", "level": "medium", "detail": f"Beta moyen {avg_beta:.1f}"})
+        risk_score += 10
+
+    # Profitability
+    unprofitable = sum(1 for s in valid_stocks if s.get("profit_margin") is not None and s["profit_margin"] < 0)
+    if unprofitable > len(valid_stocks) * 0.5:
+        risk_factors.append({"name": "Secteur peu profitable", "level": "high", "detail": f"{unprofitable}/{len(valid_stocks)} entreprises en perte — dépendance au financement"})
+        risk_score += 20
+    elif unprofitable > 0:
+        risk_factors.append({"name": "Mix de profitabilité", "level": "medium", "detail": f"{unprofitable}/{len(valid_stocks)} entreprises non profitables"})
+        risk_score += 8
+
+    # Concentration
+    if len(valid_stocks) >= 3:
+        total_mcap = sum(s.get("market_cap") or 0 for s in valid_stocks)
+        top3_mcap = sum(s.get("market_cap") or 0 for s in valid_stocks[:3])
+        if total_mcap > 0 and top3_mcap / total_mcap > 0.8:
+            risk_factors.append({"name": "Concentration", "level": "medium", "detail": f"Top 3 = {top3_mcap/total_mcap*100:.0f}% de la capitalisation sectorielle"})
+            risk_score += 10
+
+    risk_score = min(risk_score, 100)
+    overall_risk = "LOW" if risk_score < 30 else "MODERATE" if risk_score < 50 else "ELEVATED" if risk_score < 70 else "HIGH"
+
+    risks = {
+        "overall_risk": overall_risk,
+        "risk_score": risk_score,
+        "factors": risk_factors,
+        "max_drawdown_estimate": "-15% à -25%" if risk_score < 50 else "-25% à -40%" if risk_score < 70 else "-35% à -50%",
+        "position_sizing": "3-5% par action, 15-20% max secteur" if risk_score < 50 else "2-3% par action, 10-15% max secteur" if risk_score < 70 else "1-2% par action, 5-10% max secteur",
+    }
+
+    # === THESIS ===
+    thesis_data = SECTOR_THESES.get(sector_name, {
+        "headline": f"Analyse approfondie : {sector_name}",
+        "why_now": f"Le secteur {sector_name} présente des opportunités intéressantes dans le contexte actuel.",
+        "bull_case": "Croissance structurelle et catalyseurs positifs.",
+        "bear_case": "Valorisations élevées et risques macro.",
+    })
+
+    # Conviction from data
+    conviction_score = 50
+    if avg_ret_3m and avg_ret_3m > 20:
+        conviction_score += 10
+    if avg_rev_growth and avg_rev_growth > 15:
+        conviction_score += 10
+    if avg_rsi and 45 < avg_rsi < 65:
+        conviction_score += 5
+    if len(catalysts) >= 2 and any(c.get("impact") == "very_high" for c in catalysts):
+        conviction_score += 10
+    if avg_margin and avg_margin > 10:
+        conviction_score += 5
+    if risk_score > 60:
+        conviction_score -= 10
+    conviction_score = max(20, min(90, conviction_score))
+    conviction = "HIGH" if conviction_score >= 70 else "MEDIUM" if conviction_score >= 45 else "LOW"
+
+    # Extract experts, bottlenecks, key_players from thesis data (keep thesis clean)
+    experts = thesis_data.get("experts", [])
+    bottlenecks = thesis_data.get("bottlenecks", [])
+    key_players = thesis_data.get("key_players", [])
+
+    thesis = {
+        "headline": thesis_data.get("headline", ""),
+        "why_now": thesis_data.get("why_now", ""),
+        "bull_case": thesis_data.get("bull_case", ""),
+        "bear_case": thesis_data.get("bear_case", ""),
+        "conviction": conviction,
+        "conviction_score": conviction_score,
+    }
+
+    # Clean up internal scores
+    for s in stocks:
+        s.pop("_pick_score", None)
+
+    result = _sanitize({
+        "sector_key": sector_name,
+        "sector_slug": sector_slug.lower(),
+        "generated_at": datetime.datetime.now().isoformat(),
+        "thesis": thesis,
+        "stocks": stocks,
+        "news": news_items,
+        "catalysts": catalysts,
+        "top_picks": top_picks,
+        "performance": performance,
+        "risks": risks,
+        "experts": experts,
+        "bottlenecks": bottlenecks,
+        "key_players": key_players,
+    })
+
+    _deepdive_cache[cache_key] = {"_ts": now, "data": result}
+    return result
+
+
+# =========================================================
+# FRED API — Federal Reserve Economic Data
+# =========================================================
+
+FRED_API_KEY = os.getenv("FRED_API_KEY", "")
+_fred_cache: Dict[str, Any] = {}
+_FRED_CACHE_TTL = 3600  # 1 hour
+
+FRED_KEY_SERIES = {
+    "GDP": {"id": "GDP", "name": "GDP (Real)", "unit": "Billions $", "freq": "Quarterly"},
+    "UNRATE": {"id": "UNRATE", "name": "Unemployment Rate", "unit": "%", "freq": "Monthly"},
+    "CPIAUCSL": {"id": "CPIAUCSL", "name": "CPI (All Urban)", "unit": "Index", "freq": "Monthly"},
+    "FEDFUNDS": {"id": "FEDFUNDS", "name": "Fed Funds Rate", "unit": "%", "freq": "Monthly"},
+    "DGS10": {"id": "DGS10", "name": "10-Year Treasury", "unit": "%", "freq": "Daily"},
+    "DGS2": {"id": "DGS2", "name": "2-Year Treasury", "unit": "%", "freq": "Daily"},
+    "T10Y2Y": {"id": "T10Y2Y", "name": "10Y-2Y Spread (Yield Curve)", "unit": "%", "freq": "Daily"},
+    "VIXCLS": {"id": "VIXCLS", "name": "VIX (CBOE)", "unit": "Index", "freq": "Daily"},
+    "DCOILWTICO": {"id": "DCOILWTICO", "name": "WTI Crude Oil", "unit": "$/Barrel", "freq": "Daily"},
+    "UMCSENT": {"id": "UMCSENT", "name": "Consumer Sentiment (UMich)", "unit": "Index", "freq": "Monthly"},
+    "INDPRO": {"id": "INDPRO", "name": "Industrial Production", "unit": "Index", "freq": "Monthly"},
+    "HOUST": {"id": "HOUST", "name": "Housing Starts", "unit": "Thousands", "freq": "Monthly"},
+    "M2SL": {"id": "M2SL", "name": "M2 Money Supply", "unit": "Billions $", "freq": "Monthly"},
+    "PAYEMS": {"id": "PAYEMS", "name": "Nonfarm Payrolls", "unit": "Thousands", "freq": "Monthly"},
+}
+
+
+def _fred_fetch(series_id: str, limit: int = 60) -> Optional[list]:
+    """Fetch observations from FRED."""
+    if not FRED_API_KEY:
+        return None
+    cache_key = f"fred_{series_id}_{limit}"
+    cached = _fred_cache.get(cache_key)
+    if cached and _time.time() - cached["_ts"] < _FRED_CACHE_TTL:
+        return cached["data"]
+    try:
+        r = requests.get(
+            "https://api.stlouisfed.org/fred/series/observations",
+            params={
+                "series_id": series_id,
+                "api_key": FRED_API_KEY,
+                "file_type": "json",
+                "sort_order": "desc",
+                "limit": limit,
+            },
+            timeout=10,
+        )
+        if r.status_code == 200:
+            obs = r.json().get("observations", [])
+            data = []
+            for o in obs:
+                val = o.get("value", ".")
+                if val != ".":
+                    try:
+                        data.append({"date": o["date"], "value": float(val)})
+                    except (ValueError, TypeError):
+                        pass
+            data.reverse()
+            _fred_cache[cache_key] = {"_ts": _time.time(), "data": data}
+            return data
+    except Exception:
+        pass
+    return None
+
+
+@app.get("/macro/dashboard")
+def macro_dashboard():
+    """Get a dashboard of key macroeconomic indicators from FRED."""
+    if not FRED_API_KEY:
+        raise HTTPException(status_code=503, detail="FRED_API_KEY not configured. Get a free key at https://fred.stlouisfed.org/docs/api/api_key.html")
+
+    indicators = {}
+    for key, meta in FRED_KEY_SERIES.items():
+        obs = _fred_fetch(meta["id"], limit=24)
+        if obs and len(obs) > 0:
+            latest = obs[-1]
+            prev = obs[-2] if len(obs) > 1 else None
+            change = None
+            if prev:
+                change = round(latest["value"] - prev["value"], 4)
+            indicators[key] = {
+                "name": meta["name"],
+                "unit": meta["unit"],
+                "frequency": meta["freq"],
+                "latest_value": latest["value"],
+                "latest_date": latest["date"],
+                "change": change,
+                "trend": obs[-12:] if len(obs) >= 12 else obs,
+            }
+
+    # Yield curve snapshot
+    t10 = _fred_fetch("DGS10", limit=1)
+    t2 = _fred_fetch("DGS2", limit=1)
+    t3m = _fred_fetch("DGS3MO", limit=1) if FRED_API_KEY else None
+    yield_curve = {}
+    if t10 and t10:
+        yield_curve["10Y"] = t10[-1]["value"]
+    if t2 and t2:
+        yield_curve["2Y"] = t2[-1]["value"]
+    if t3m and t3m:
+        yield_curve["3M"] = t3m[-1]["value"]
+    spread = _fred_fetch("T10Y2Y", limit=1)
+    if spread:
+        yield_curve["10Y_2Y_spread"] = spread[-1]["value"]
+        yield_curve["inverted"] = spread[-1]["value"] < 0
+
+    return _sanitize({
+        "generated_at": datetime.datetime.now().isoformat(),
+        "indicators": indicators,
+        "yield_curve": yield_curve,
+    })
+
+
+@app.get("/macro/series/{series_id}")
+def macro_series(series_id: str, limit: int = 120):
+    """Get historical data for a specific FRED series."""
+    if not FRED_API_KEY:
+        raise HTTPException(status_code=503, detail="FRED_API_KEY not configured")
+    obs = _fred_fetch(series_id.upper(), limit=min(limit, 500))
+    if obs is None:
+        raise HTTPException(status_code=404, detail=f"Series {series_id} not found")
+    meta = FRED_KEY_SERIES.get(series_id.upper(), {"name": series_id, "unit": "", "freq": ""})
+    return _sanitize({
+        "series_id": series_id.upper(),
+        "name": meta.get("name", series_id),
+        "unit": meta.get("unit", ""),
+        "frequency": meta.get("freq", ""),
+        "observations": obs,
+        "count": len(obs),
+    })
+
+
+# =========================================================
+# SEC EDGAR — Company Filings & XBRL Financial Facts
+# =========================================================
+
+_edgar_cache: Dict[str, Any] = {}
+_EDGAR_CACHE_TTL = 1800  # 30 min
+_EDGAR_HEADERS = {"User-Agent": "ChabAlgoTerminal contact@chabalgo.com", "Accept": "application/json"}
+
+
+def _ticker_to_cik(ticker: str) -> Optional[str]:
+    """Convert ticker to 10-digit CIK for EDGAR."""
+    cache_key = "edgar_tickers"
+    cached = _edgar_cache.get(cache_key)
+    if not cached or _time.time() - cached["_ts"] > 86400:
+        try:
+            r = requests.get(
+                "https://www.sec.gov/files/company_tickers.json",
+                headers=_EDGAR_HEADERS,
+                timeout=10,
+            )
+            if r.status_code == 200:
+                mapping = {}
+                for entry in r.json().values():
+                    mapping[entry["ticker"].upper()] = str(entry["cik_str"]).zfill(10)
+                _edgar_cache[cache_key] = {"_ts": _time.time(), "data": mapping}
+                cached = _edgar_cache[cache_key]
+        except Exception:
+            return None
+    if cached:
+        return cached["data"].get(ticker.upper())
+    return None
+
+
+@app.get("/sec/filings/{ticker}")
+def sec_filings(ticker: str, filing_type: str = ""):
+    """Get recent SEC filings for a company."""
+    cik = _ticker_to_cik(ticker.upper())
+    if not cik:
+        raise HTTPException(status_code=404, detail=f"CIK not found for {ticker}")
+
+    cache_key = f"edgar_filings_{cik}"
+    cached = _edgar_cache.get(cache_key)
+    if cached and _time.time() - cached["_ts"] < _EDGAR_CACHE_TTL:
+        data = cached["data"]
+    else:
+        try:
+            r = requests.get(
+                f"https://data.sec.gov/submissions/CIK{cik}.json",
+                headers=_EDGAR_HEADERS,
+                timeout=10,
+            )
+            if r.status_code != 200:
+                raise HTTPException(status_code=502, detail="EDGAR API error")
+            data = r.json()
+            _edgar_cache[cache_key] = {"_ts": _time.time(), "data": data}
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=502, detail="Failed to fetch EDGAR data")
+
+    company_name = data.get("name", "")
+    recent = data.get("filings", {}).get("recent", {})
+    forms = recent.get("form", [])
+    dates = recent.get("filingDate", [])
+    accessions = recent.get("accessionNumber", [])
+    descriptions = recent.get("primaryDocDescription", [])
+    documents = recent.get("primaryDocument", [])
+
+    filings = []
+    for i in range(min(len(forms), 50)):
+        form = forms[i] if i < len(forms) else ""
+        if filing_type and form != filing_type.upper():
+            continue
+        acc = accessions[i].replace("-", "") if i < len(accessions) else ""
+        doc = documents[i] if i < len(documents) else ""
+        filings.append({
+            "form": form,
+            "date": dates[i] if i < len(dates) else "",
+            "description": descriptions[i] if i < len(descriptions) else "",
+            "url": f"https://www.sec.gov/Archives/edgar/data/{cik.lstrip('0')}/{acc}/{doc}" if acc and doc else "",
+        })
+
+    return _sanitize({
+        "ticker": ticker.upper(),
+        "cik": cik,
+        "company_name": company_name,
+        "filings": filings[:30],
+        "total": len(filings),
+    })
+
+
+@app.get("/sec/facts/{ticker}")
+def sec_financial_facts(ticker: str, concept: str = ""):
+    """Get XBRL financial facts from EDGAR (revenue, net income, assets, etc.)."""
+    cik = _ticker_to_cik(ticker.upper())
+    if not cik:
+        raise HTTPException(status_code=404, detail=f"CIK not found for {ticker}")
+
+    cache_key = f"edgar_facts_{cik}"
+    cached = _edgar_cache.get(cache_key)
+    if cached and _time.time() - cached["_ts"] < _EDGAR_CACHE_TTL:
+        data = cached["data"]
+    else:
+        try:
+            r = requests.get(
+                f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json",
+                headers=_EDGAR_HEADERS,
+                timeout=10,
+            )
+            if r.status_code != 200:
+                raise HTTPException(status_code=502, detail="EDGAR XBRL API error")
+            data = r.json()
+            _edgar_cache[cache_key] = {"_ts": _time.time(), "data": data}
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=502, detail="Failed to fetch XBRL data")
+
+    us_gaap = data.get("facts", {}).get("us-gaap", {})
+
+    KEY_CONCEPTS = [
+        "Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax",
+        "NetIncomeLoss", "GrossProfit", "OperatingIncomeLoss",
+        "Assets", "Liabilities", "StockholdersEquity",
+        "EarningsPerShareBasic", "EarningsPerShareDiluted",
+        "CashAndCashEquivalentsAtCarryingValue",
+        "LongTermDebt", "OperatingCashFlow",
+        "CommonStockSharesOutstanding",
+    ]
+
+    if concept:
+        KEY_CONCEPTS = [concept]
+
+    facts_out = {}
+    for c in KEY_CONCEPTS:
+        if c not in us_gaap:
+            continue
+        units = us_gaap[c].get("units", {})
+        # Get USD or shares units
+        unit_key = "USD" if "USD" in units else ("shares" if "shares" in units else (list(units.keys())[0] if units else None))
+        if not unit_key:
+            continue
+        entries = units[unit_key]
+        # Only keep annual (10-K) filings, most recent first
+        annual = [e for e in entries if e.get("form") == "10-K" and e.get("val") is not None]
+        annual.sort(key=lambda x: x.get("end", ""), reverse=True)
+        facts_out[c] = {
+            "label": us_gaap[c].get("label", c),
+            "unit": unit_key,
+            "annual": [{"period_end": e.get("end", ""), "value": e["val"], "filed": e.get("filed", "")} for e in annual[:10]],
+        }
+
+    return _sanitize({
+        "ticker": ticker.upper(),
+        "cik": cik,
+        "company_name": data.get("entityName", ""),
+        "facts": facts_out,
+    })
+
+
+# =========================================================
+# FEAR & GREED — FearGreedChart.com (lightweight, no yfinance)
+# =========================================================
+
+_fg_cache: Dict[str, Any] = {}
+_FG_CACHE_TTL = 900  # 15 min
+
+
+@app.get("/fear-greed-v2")
+def fear_greed_v2():
+    """Get Fear & Greed index from FearGreedChart.com — faster, no yfinance dependency."""
+    cached = _fg_cache.get("fg_all")
+    if cached and _time.time() - cached["_ts"] < _FG_CACHE_TTL:
+        return cached["data"]
+
+    try:
+        r = requests.get("https://feargreedchart.com/api/?action=all", timeout=10)
+        if r.status_code != 200:
+            raise HTTPException(status_code=502, detail="FearGreedChart API unavailable")
+        raw = r.json()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=502, detail="Failed to fetch Fear & Greed data")
+
+    score = raw.get("score", 50)
+    label = raw.get("label", "Neutral")
+
+    # Map to our format
+    if score >= 80:
+        verdict = "EXTREME GREED"
+        color = "red"
+    elif score >= 60:
+        verdict = "GREED"
+        color = "green"
+    elif score >= 40:
+        verdict = "NEUTRAL"
+        color = "yellow"
+    elif score >= 20:
+        verdict = "FEAR"
+        color = "orange"
+    else:
+        verdict = "EXTREME FEAR"
+        color = "red"
+
+    components = raw.get("components", {})
+    signals = {}
+    for key, comp in components.items():
+        if isinstance(comp, dict) and "score" in comp:
+            s = comp["score"]
+            signals[key] = {
+                "value": comp.get("value", s),
+                "label": comp.get("label", key),
+                "score": s,
+                "signal": "extreme_greed" if s >= 80 else "greed" if s >= 60 else "neutral" if s >= 40 else "fear" if s >= 20 else "extreme_fear",
+            }
+
+    # Also get market data snapshot
+    market = raw.get("market", {})
+
+    result = _sanitize({
+        "composite_score": score,
+        "verdict": verdict,
+        "label": label,
+        "color": color,
+        "signals": signals,
+        "market": market,
+        "source": "feargreedchart.com",
+        "generated_at": datetime.datetime.now().isoformat(),
+    })
+    _fg_cache["fg_all"] = {"_ts": _time.time(), "data": result}
+    return result
+
+
+@app.get("/market-regime")
+def market_regime():
+    """Get market regime analysis from FearGreedChart.com."""
+    cached = _fg_cache.get("regime")
+    if cached and _time.time() - cached["_ts"] < _FG_CACHE_TTL:
+        return cached["data"]
+    try:
+        r = requests.get("https://feargreedchart.com/api/?action=regime", timeout=10)
+        if r.status_code == 200:
+            data = _sanitize(r.json())
+            _fg_cache["regime"] = {"_ts": _time.time(), "data": data}
+            return data
+    except Exception:
+        pass
+    raise HTTPException(status_code=502, detail="Market regime data unavailable")
+
+
+@app.get("/net-liquidity")
+def net_liquidity():
+    """Get US net liquidity index from FearGreedChart.com."""
+    cached = _fg_cache.get("liquidity")
+    if cached and _time.time() - cached["_ts"] < _FG_CACHE_TTL:
+        return cached["data"]
+    try:
+        r = requests.get("https://feargreedchart.com/api/?action=liquidity", timeout=10)
+        if r.status_code == 200:
+            data = _sanitize(r.json())
+            _fg_cache["liquidity"] = {"_ts": _time.time(), "data": data}
+            return data
+    except Exception:
+        pass
+    raise HTTPException(status_code=502, detail="Liquidity data unavailable")
+
+
+# =========================================================
+# FINANCIAL MODELING PREP — DCF, Ratios, Screener
+# =========================================================
+
+FMP_API_KEY = os.getenv("FMP_API_KEY", "")
+_fmp_cache: Dict[str, Any] = {}
+_FMP_CACHE_TTL = 1800  # 30 min
+
+
+def _fmp_get(endpoint: str, params: dict = None) -> Optional[Any]:
+    """Fetch from Financial Modeling Prep API."""
+    if not FMP_API_KEY:
+        return None
+    cache_key = f"fmp_{endpoint}_{json.dumps(params or {}, sort_keys=True)}"
+    cached = _fmp_cache.get(cache_key)
+    if cached and _time.time() - cached["_ts"] < _FMP_CACHE_TTL:
+        return cached["data"]
+    try:
+        p = {"apikey": FMP_API_KEY}
+        if params:
+            p.update(params)
+        r = requests.get(f"https://financialmodelingprep.com/api/v3/{endpoint}", params=p, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            _fmp_cache[cache_key] = {"_ts": _time.time(), "data": data}
+            return data
+    except Exception:
+        pass
+    return None
+
+
+@app.get("/dcf/{ticker}")
+def dcf_valuation(ticker: str):
+    """Get DCF intrinsic value from Financial Modeling Prep."""
+    if not FMP_API_KEY:
+        raise HTTPException(status_code=503, detail="FMP_API_KEY not configured. Get a free key at https://financialmodelingprep.com/")
+
+    # DCF value
+    dcf = _fmp_get(f"discounted-cash-flow/{ticker.upper()}")
+    if not dcf or (isinstance(dcf, list) and len(dcf) == 0):
+        raise HTTPException(status_code=404, detail=f"DCF data not available for {ticker}")
+
+    dcf_data = dcf[0] if isinstance(dcf, list) else dcf
+
+    # Also get advanced DCF breakdown
+    adv = _fmp_get(f"advanced_discounted_cash_flow", {"symbol": ticker.upper()})
+
+    # Key ratios
+    ratios = _fmp_get(f"ratios/{ticker.upper()}")
+    ratios_summary = {}
+    if ratios and isinstance(ratios, list) and len(ratios) > 0:
+        r0 = ratios[0]
+        ratios_summary = {
+            "pe_ratio": r0.get("priceEarningsRatio"),
+            "peg_ratio": r0.get("priceEarningsToGrowthRatio"),
+            "price_to_book": r0.get("priceToBookRatio"),
+            "price_to_sales": r0.get("priceToSalesRatio"),
+            "ev_to_ebitda": r0.get("enterpriseValueMultiple"),
+            "roe": r0.get("returnOnEquity"),
+            "roa": r0.get("returnOnAssets"),
+            "debt_to_equity": r0.get("debtEquityRatio"),
+            "current_ratio": r0.get("currentRatio"),
+            "quick_ratio": r0.get("quickRatio"),
+            "gross_margin": r0.get("grossProfitMargin"),
+            "operating_margin": r0.get("operatingProfitMargin"),
+            "net_margin": r0.get("netProfitMargin"),
+            "dividend_yield": r0.get("dividendYield"),
+            "payout_ratio": r0.get("payoutRatio"),
+            "period": r0.get("date", ""),
+        }
+
+    # Rating
+    rating = _fmp_get(f"rating/{ticker.upper()}")
+    rating_data = None
+    if rating and isinstance(rating, list) and len(rating) > 0:
+        r = rating[0]
+        rating_data = {
+            "score": r.get("ratingScore"),
+            "rating": r.get("rating"),
+            "recommendation": r.get("ratingRecommendation"),
+            "dcf_score": r.get("ratingDetailsDCFScore"),
+            "roe_score": r.get("ratingDetailsROEScore"),
+            "roa_score": r.get("ratingDetailsROAScore"),
+            "de_score": r.get("ratingDetailsDEScore"),
+            "pe_score": r.get("ratingDetailsPEScore"),
+            "pb_score": r.get("ratingDetailsPBScore"),
+        }
+
+    return _sanitize({
+        "ticker": ticker.upper(),
+        "dcf_price": dcf_data.get("dcf"),
+        "stock_price": dcf_data.get("Stock Price") or dcf_data.get("stockPrice"),
+        "upside_pct": round(((dcf_data.get("dcf", 0) / max(dcf_data.get("Stock Price") or dcf_data.get("stockPrice") or 1, 0.01)) - 1) * 100, 1) if dcf_data.get("dcf") else None,
+        "date": dcf_data.get("date", ""),
+        "ratios": ratios_summary,
+        "rating": rating_data,
+        "advanced_dcf": adv[0] if adv and isinstance(adv, list) and len(adv) > 0 else None,
+    })
+
+
+@app.get("/fmp-screener")
+def fmp_stock_screener(
+    market_cap_min: float = 1e9,
+    market_cap_max: float = 0,
+    sector: str = "",
+    industry: str = "",
+    beta_min: float = 0,
+    beta_max: float = 0,
+    dividend_min: float = 0,
+    price_min: float = 0,
+    price_max: float = 0,
+    limit: int = 30,
+):
+    """Stock screener via Financial Modeling Prep."""
+    if not FMP_API_KEY:
+        raise HTTPException(status_code=503, detail="FMP_API_KEY not configured")
+
+    params = {"marketCapMoreThan": int(market_cap_min), "limit": min(limit, 100)}
+    if market_cap_max > 0:
+        params["marketCapLowerThan"] = int(market_cap_max)
+    if sector:
+        params["sector"] = sector
+    if industry:
+        params["industry"] = industry
+    if beta_min > 0:
+        params["betaMoreThan"] = beta_min
+    if beta_max > 0:
+        params["betaLowerThan"] = beta_max
+    if dividend_min > 0:
+        params["dividendMoreThan"] = dividend_min
+    if price_min > 0:
+        params["priceMoreThan"] = price_min
+    if price_max > 0:
+        params["priceLowerThan"] = price_max
+
+    data = _fmp_get("stock-screener", params)
+    if not data:
+        raise HTTPException(status_code=502, detail="Screener unavailable")
+
+    results = []
+    for s in data:
+        results.append({
+            "ticker": s.get("symbol", ""),
+            "name": s.get("companyName", ""),
+            "market_cap": s.get("marketCap"),
+            "price": s.get("price"),
+            "beta": s.get("beta"),
+            "volume": s.get("volume"),
+            "dividend": s.get("lastAnnualDividend"),
+            "sector": s.get("sector", ""),
+            "industry": s.get("industry", ""),
+            "exchange": s.get("exchangeShortName", ""),
+            "country": s.get("country", ""),
+        })
+
+    return _sanitize({"results": results, "count": len(results)})
+
+
+@app.get("/key-metrics/{ticker}")
+def fmp_key_metrics(ticker: str):
+    """Get comprehensive key metrics from FMP (growth, profitability, efficiency)."""
+    if not FMP_API_KEY:
+        raise HTTPException(status_code=503, detail="FMP_API_KEY not configured")
+
+    metrics = _fmp_get(f"key-metrics/{ticker.upper()}")
+    growth = _fmp_get(f"financial-growth/{ticker.upper()}")
+
+    metrics_out = []
+    if metrics and isinstance(metrics, list):
+        for m in metrics[:5]:
+            metrics_out.append({
+                "date": m.get("date", ""),
+                "revenue_per_share": m.get("revenuePerShare"),
+                "net_income_per_share": m.get("netIncomePerShare"),
+                "operating_cf_per_share": m.get("operatingCashFlowPerShare"),
+                "free_cf_per_share": m.get("freeCashFlowPerShare"),
+                "pe": m.get("peRatio"),
+                "ev_to_ebitda": m.get("enterpriseValueOverEBITDA"),
+                "pb": m.get("pbRatio"),
+                "roe": m.get("roe"),
+                "roic": m.get("roic"),
+                "dividend_yield": m.get("dividendYield"),
+            })
+
+    growth_out = []
+    if growth and isinstance(growth, list):
+        for g in growth[:5]:
+            growth_out.append({
+                "date": g.get("date", ""),
+                "revenue_growth": g.get("revenueGrowth"),
+                "net_income_growth": g.get("netIncomeGrowth"),
+                "eps_growth": g.get("epsgrowth"),
+                "operating_income_growth": g.get("operatingIncomeGrowth"),
+                "free_cf_growth": g.get("freeCashFlowGrowth"),
+                "debt_growth": g.get("debtGrowth"),
+                "rd_growth": g.get("rdexpenseGrowth"),
+            })
+
+    return _sanitize({
+        "ticker": ticker.upper(),
+        "metrics": metrics_out,
+        "growth": growth_out,
+    })
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
