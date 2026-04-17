@@ -105,7 +105,7 @@ export default function StockComparison({ initialTicker, onSearch }: { initialTi
   };
 
   return (
-    <div className="bg-card border border-border rounded-sm">
+    <div className="bg-card border border-border rounded-xl">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -124,12 +124,12 @@ export default function StockComparison({ initialTicker, onSearch }: { initialTi
             onChange={(e) => setInput(e.target.value.toUpperCase())}
             onKeyDown={(e) => e.key === "Enter" && handleCompare()}
             placeholder="AAPL, MSFT, GOOGL, AMZN"
-            className="flex-1 bg-subtle border border-border rounded-sm px-3 py-2 text-xs text-foreground placeholder:text-muted/40 focus:outline-none focus:border-accent/40"
+            className="flex-1 bg-subtle border border-border rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted/40 focus:outline-none focus:border-accent/40"
           />
           <button
             onClick={handleCompare}
             disabled={loading}
-            className="px-4 py-2 bg-accent text-white text-[10px] tracking-wider font-semibold rounded-sm hover:bg-accent/90 transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-accent text-white text-[10px] tracking-wider font-semibold rounded-xl hover:bg-accent/90 transition-colors disabled:opacity-50"
           >
             {loading ? "..." : "COMPARE"}
           </button>

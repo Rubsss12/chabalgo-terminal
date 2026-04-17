@@ -34,7 +34,7 @@ export default function SwotAnalysis({ ticker }: { ticker: string }) {
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-sm p-5">
+      <div className="bg-card border border-border rounded-xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-4 h-4 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
           <span className="text-[10px] text-muted tracking-wider">SWOT ANALYSIS...</span>
@@ -50,7 +50,7 @@ export default function SwotAnalysis({ ticker }: { ticker: string }) {
 
   if (error || !data) {
     return (
-      <div className="bg-card border border-border rounded-sm p-4">
+      <div className="bg-card border border-border rounded-xl p-4">
         <div className="text-[10px] text-red/70">{error || "No data"}</div>
       </div>
     );
@@ -100,7 +100,7 @@ export default function SwotAnalysis({ ticker }: { ticker: string }) {
   ];
 
   return (
-    <div className="bg-card border border-border rounded-sm">
+    <div className="bg-card border border-border rounded-xl">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -116,7 +116,7 @@ export default function SwotAnalysis({ ticker }: { ticker: string }) {
       {/* 2x2 Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
         {quadrants.map((q) => (
-          <div key={q.key} className={`${q.bg} border ${q.border} m-2 rounded-sm p-3`}>
+          <div key={q.key} className={`${q.bg} border ${q.border} m-2 rounded-xl p-3`}>
             <div className="flex items-center gap-1.5 mb-2">
               <svg className={`w-3.5 h-3.5 ${q.color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={q.icon} />

@@ -143,7 +143,7 @@ export default function ShortTermVerdict({ ticker }: { ticker: string }) {
 
       {/* Data confidence warning */}
       {data.data_confidence != null && data.data_confidence < 100 && data.data_warnings && data.data_warnings.length > 0 && (
-        <div className="mb-4 border border-yellow/30 bg-yellow/5 p-3 rounded-sm">
+        <div className="mb-4 border border-yellow/30 bg-yellow/5 p-3 rounded-xl">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-yellow text-xs font-semibold">DATA CONFIDENCE: {data.data_confidence}%</span>
           </div>
@@ -159,12 +159,12 @@ export default function ShortTermVerdict({ ticker }: { ticker: string }) {
       <div className="space-y-1 mb-5">
         <div className="text-[10px] text-muted/60 mb-2 tracking-wider uppercase">Signal Breakdown</div>
         {data.factors.map((factor, fi) => (
-          <div key={fi} className="border border-border rounded-sm overflow-hidden">
+          <div key={fi} className="border border-border rounded-xl overflow-hidden">
             <button
               onClick={() => setExpandedFactor(expandedFactor === fi ? null : fi)}
               className="w-full flex items-center gap-3 px-4 py-2 hover:bg-subtle transition-colors text-left"
             >
-              <span className="text-xs font-semibold w-5 h-5 flex items-center justify-center border rounded-sm" style={{ color: "#2D8B4E", borderColor: "#2D8B4E40" }}>
+              <span className="text-xs font-semibold w-5 h-5 flex items-center justify-center border rounded-xl" style={{ color: "#2D8B4E", borderColor: "#2D8B4E40" }}>
                 {factorIcon(factor.category)}
               </span>
               <span className="text-sm text-foreground flex-1">

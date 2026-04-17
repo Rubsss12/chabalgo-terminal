@@ -98,10 +98,10 @@ export default function SearchBar({ onSearch, loading }: SearchBarProps) {
   };
 
   return (
-    <div ref={containerRef} className="w-full max-w-2xl mx-auto relative">
+    <div ref={containerRef} className="w-full relative">
       <form onSubmit={handleSubmit}>
-        <div className="border border-border bg-card flex items-center px-5 py-3.5 shadow-sm hover:border-accent/40 transition-colors focus-within:border-accent/60">
-          <svg className="w-4 h-4 text-accent mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="border border-border bg-card/80 backdrop-blur-sm flex items-center px-4 py-3 rounded-xl hover:border-border-light focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/10 transition-all">
+          <svg className="w-4 h-4 text-muted mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
@@ -111,31 +111,35 @@ export default function SearchBar({ onSearch, loading }: SearchBarProps) {
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-            placeholder='Search ticker or company name...'
-            className="flex-1 bg-transparent text-foreground text-sm outline-none placeholder:text-muted/60"
+            placeholder="Search any ticker or company..."
+            className="flex-1 bg-transparent text-foreground text-sm outline-none placeholder:text-muted/50"
             disabled={loading}
           />
-          {loading && (
-            <span className="text-accent text-xs animate-pulse ml-2 tracking-wider">LOADING</span>
+          {loading ? (
+            <div className="w-4 h-4 border-2 border-accent/20 border-t-accent rounded-full animate-spin ml-2" />
+          ) : (
+            <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[9px] text-muted/40 border border-border rounded font-mono ml-2">
+              Enter
+            </kbd>
           )}
         </div>
       </form>
 
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-50 border border-border border-t-0 bg-card shadow-lg max-h-64 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 border border-border bg-card rounded-xl shadow-2xl shadow-black/30 max-h-72 overflow-y-auto">
           {suggestions.map((item, i) => (
             <button
               key={`${item.symbol}-${i}`}
               type="button"
-              className={`w-full text-left px-5 py-2.5 flex items-center gap-3 text-sm transition-colors ${
-                i === selectedIdx ? "bg-accent-light text-accent" : "text-foreground hover:bg-subtle"
+              className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm transition-colors first:rounded-t-xl last:rounded-b-xl ${
+                i === selectedIdx ? "bg-accent/10 text-accent" : "text-foreground hover:bg-card-hover"
               }`}
               onClick={() => submitTicker(item.symbol)}
               onMouseEnter={() => setSelectedIdx(i)}
             >
-              <span className="text-accent font-semibold min-w-[60px]">{item.symbol}</span>
-              <span className="text-muted truncate">{item.description}</span>
-              <span className="text-muted/50 ml-auto text-xs">{item.type}</span>
+              <span className="text-accent font-bold min-w-[56px] font-mono text-xs">{item.symbol}</span>
+              <span className="text-muted truncate text-xs">{item.description}</span>
+              <span className="text-muted/30 ml-auto text-[10px] font-medium">{item.type}</span>
             </button>
           ))}
         </div>

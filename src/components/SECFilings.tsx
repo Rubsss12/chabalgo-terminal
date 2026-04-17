@@ -59,7 +59,7 @@ export default function SECFilings({ ticker }: { ticker: string }) {
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-sm p-4">
+      <div className="bg-card border border-border rounded-xl p-4">
         <div className="flex items-center gap-2 text-[10px] text-muted animate-pulse">
           <div className="w-3 h-3 border border-accent/30 border-t-accent rounded-full animate-spin" />
           Loading SEC filings...
@@ -70,7 +70,7 @@ export default function SECFilings({ ticker }: { ticker: string }) {
 
   if (!data || data.filings.length === 0) {
     return (
-      <div className="bg-card border border-border rounded-sm p-4">
+      <div className="bg-card border border-border rounded-xl p-4">
         <div className="text-[10px] text-muted/50">No SEC filings available for {ticker}</div>
       </div>
     );
@@ -79,19 +79,19 @@ export default function SECFilings({ ticker }: { ticker: string }) {
   const filtered = filter ? data.filings.filter((f) => f.form === filter) : data.filings;
 
   return (
-    <div className="bg-card border border-border rounded-sm overflow-hidden">
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-1 h-4 bg-accent rounded-full" />
           <span className="text-[11px] font-bold tracking-wider text-foreground">SEC FILINGS</span>
-          <span className="text-[8px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-sm font-bold tracking-widest">EDGAR</span>
+          <span className="text-[8px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-xl font-bold tracking-widest">EDGAR</span>
         </div>
         <div className="flex items-center gap-1.5">
           {(["", "10-K", "10-Q", "8-K", "4"] as FilterType[]).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`text-[8px] px-2 py-0.5 rounded-sm font-medium tracking-wider transition-colors ${
+              className={`text-[8px] px-2 py-0.5 rounded-xl font-medium tracking-wider transition-colors ${
                 filter === f
                   ? "bg-accent/15 text-accent"
                   : "text-muted/40 hover:text-muted"
@@ -106,7 +106,7 @@ export default function SECFilings({ ticker }: { ticker: string }) {
       <div className="max-h-72 overflow-y-auto divide-y divide-border/30">
         {filtered.map((f, i) => (
           <div key={i} className="px-4 py-2.5 hover:bg-background/50 transition-colors flex items-start gap-3">
-            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-sm flex-shrink-0 mt-0.5 ${FORM_COLORS[f.form] || "bg-muted/10 text-muted"}`}>
+            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-xl flex-shrink-0 mt-0.5 ${FORM_COLORS[f.form] || "bg-muted/10 text-muted"}`}>
               {f.form}
             </span>
             <div className="min-w-0 flex-1">

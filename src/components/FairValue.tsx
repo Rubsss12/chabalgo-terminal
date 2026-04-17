@@ -44,7 +44,7 @@ export default function FairValue({ ticker }: { ticker: string }) {
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-sm p-5">
+      <div className="bg-card border border-border rounded-xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-4 h-4 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
           <span className="text-[10px] text-muted tracking-wider">FAIR VALUE...</span>
@@ -60,7 +60,7 @@ export default function FairValue({ ticker }: { ticker: string }) {
 
   if (error || !data) {
     return (
-      <div className="bg-card border border-border rounded-sm p-4">
+      <div className="bg-card border border-border rounded-xl p-4">
         <div className="text-[10px] text-red/70">{error || "No data"}</div>
       </div>
     );
@@ -98,7 +98,7 @@ export default function FairValue({ ticker }: { ticker: string }) {
     : 50;
 
   return (
-    <div className="bg-card border border-border rounded-sm">
+    <div className="bg-card border border-border rounded-xl">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -111,7 +111,7 @@ export default function FairValue({ ticker }: { ticker: string }) {
 
       <div className="p-4 space-y-4">
         {/* Verdict banner */}
-        <div className={`border rounded-sm p-3 ${verdictBg()}`}>
+        <div className={`border rounded-xl p-3 ${verdictBg()}`}>
           <div className="flex items-center justify-between">
             <div>
               <div className={`text-xs font-bold tracking-wider ${verdictColor()}`}>{data.verdict}</div>
@@ -159,13 +159,13 @@ export default function FairValue({ ticker }: { ticker: string }) {
           <div className="text-[9px] text-muted/50 tracking-wider mb-2">MÉTHODES DE VALORISATION</div>
           <div className="space-y-1.5">
             {data.methods.map((m, i) => (
-              <div key={i} className="flex items-center justify-between py-1.5 px-2 bg-subtle/30 rounded-sm">
+              <div key={i} className="flex items-center justify-between py-1.5 px-2 bg-subtle/30 rounded-xl">
                 <div className="flex-1 min-w-0">
                   <div className="text-[11px] text-foreground font-medium truncate">{m.name}</div>
                   <div className="text-[9px] text-muted/50 truncate">{m.detail}</div>
                 </div>
                 <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                  <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-medium ${confidenceColor(m.confidence)}`}>
+                  <span className={`text-[8px] px-1.5 py-0.5 rounded-xl font-medium ${confidenceColor(m.confidence)}`}>
                     {m.confidence.toUpperCase()}
                   </span>
                   <span className="text-sm font-bold text-foreground w-20 text-right">${m.value.toFixed(2)}</span>
@@ -177,7 +177,7 @@ export default function FairValue({ ticker }: { ticker: string }) {
 
         {/* Analyst target range */}
         {data.analyst_target && (
-          <div className="border border-border/50 rounded-sm p-3">
+          <div className="border border-border/50 rounded-xl p-3">
             <div className="text-[9px] text-muted/50 tracking-wider mb-2">OBJECTIF ANALYSTES ({data.analyst_target.count})</div>
             <div className="flex items-center gap-3">
               <span className="text-[10px] text-red/70">${data.analyst_target.low}</span>
@@ -209,7 +209,7 @@ export default function FairValue({ ticker }: { ticker: string }) {
         )}
 
         {/* AI Summary */}
-        <div className="bg-accent/5 border border-accent/10 rounded-sm p-3">
+        <div className="bg-accent/5 border border-accent/10 rounded-xl p-3">
           <div className="text-[9px] text-accent/60 tracking-wider mb-1">AI ANALYSIS</div>
           <div className="text-[11px] text-foreground/80 leading-relaxed">{data.ai_summary}</div>
         </div>
