@@ -70,7 +70,7 @@ export default function MacroDashboard() {
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-sm p-6">
+      <div className="bg-card border border-border rounded-xl p-6">
         <div className="flex items-center gap-2 text-[10px] text-muted animate-pulse">
           <div className="w-3 h-3 border border-accent/30 border-t-accent rounded-full animate-spin" />
           Loading macro indicators...
@@ -81,7 +81,7 @@ export default function MacroDashboard() {
 
   if (error || !data) {
     return (
-      <div className="bg-card border border-border rounded-sm p-4">
+      <div className="bg-card border border-border rounded-xl p-4">
         <div className="text-[10px] text-muted/50">{error || "Macro data unavailable"}</div>
       </div>
     );
@@ -91,13 +91,13 @@ export default function MacroDashboard() {
   const yc = data.yield_curve;
 
   return (
-    <div className="bg-card border border-border rounded-sm overflow-hidden">
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-1 h-4 bg-accent rounded-full" />
           <span className="text-[11px] font-bold tracking-wider text-foreground">MACRO DASHBOARD</span>
-          <span className="text-[8px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-sm font-bold tracking-widest">FRED</span>
+          <span className="text-[8px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-xl font-bold tracking-widest">FRED</span>
         </div>
         <span className="text-[8px] text-muted/40">Federal Reserve Economic Data</span>
       </div>

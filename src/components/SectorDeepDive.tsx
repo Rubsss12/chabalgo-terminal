@@ -178,7 +178,7 @@ export default function SectorDeepDive({
           <div className="text-muted text-[11px]">Aggregating data across all sector stocks...</div>
           <div className="mt-8 grid grid-cols-3 gap-3 w-full max-w-lg">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-16 bg-subtle/50 rounded-sm animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />
+              <div key={i} className="h-16 bg-subtle/50 rounded-xl animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />
             ))}
           </div>
         </div>
@@ -189,7 +189,7 @@ export default function SectorDeepDive({
   if (error || !data) {
     return (
       <div className="max-w-7xl mx-auto px-6 pb-10">
-        <div className="border border-red/30 bg-red/5 p-6 rounded-sm text-center">
+        <div className="border border-red/30 bg-red/5 p-6 rounded-xl text-center">
           <div className="text-red text-sm font-medium mb-2">Deep Dive Failed</div>
           <div className="text-red/70 text-xs">{error || "No data"}</div>
           <button onClick={onClose} className="mt-4 text-accent text-xs hover:underline">Back to Dashboard</button>
@@ -209,7 +209,7 @@ export default function SectorDeepDive({
   return (
     <div className="max-w-7xl mx-auto px-6 pb-10 space-y-5">
       {/* ===== NAVIGATION BAR ===== */}
-      <div className="flex items-center justify-between bg-card border border-border px-4 py-2.5 rounded-sm">
+      <div className="flex items-center justify-between bg-card border border-border px-4 py-2.5 rounded-xl">
         <button onClick={onClose} className="flex items-center gap-2 text-muted hover:text-accent transition-colors text-[11px] tracking-wider group">
           <svg className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -217,7 +217,7 @@ export default function SectorDeepDive({
           DASHBOARD
         </button>
         <div className="flex items-center gap-3">
-          <span className={`text-[9px] px-2 py-0.5 rounded-sm font-bold tracking-wider border ${convBg} ${convColor}`}>
+          <span className={`text-[9px] px-2 py-0.5 rounded-xl font-bold tracking-wider border ${convBg} ${convColor}`}>
             {data.thesis.conviction} CONVICTION
           </span>
           <span className="text-accent text-xs font-semibold tracking-wide">{data.sector_key}</span>
@@ -225,7 +225,7 @@ export default function SectorDeepDive({
       </div>
 
       {/* ===== THESIS / HERO SECTION ===== */}
-      <div className="bg-gradient-to-br from-accent/8 via-accent/4 to-transparent border border-accent/15 rounded-sm p-6">
+      <div className="bg-gradient-to-br from-accent/8 via-accent/4 to-transparent border border-accent/15 rounded-xl p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="text-[9px] text-accent/60 tracking-[0.2em] mb-1">SECTOR DEEP DIVE</div>
@@ -240,7 +240,7 @@ export default function SectorDeepDive({
         <p className="text-[12px] text-foreground/80 leading-relaxed mb-5 max-w-3xl">{data.thesis.why_now}</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-green/5 border border-green/15 rounded-sm p-3">
+          <div className="bg-green/5 border border-green/15 rounded-xl p-3">
             <div className="flex items-center gap-1.5 mb-1.5">
               <svg className="w-3.5 h-3.5 text-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -249,7 +249,7 @@ export default function SectorDeepDive({
             </div>
             <p className="text-[10px] text-foreground/70 leading-relaxed">{data.thesis.bull_case}</p>
           </div>
-          <div className="bg-red/5 border border-red/15 rounded-sm p-3">
+          <div className="bg-red/5 border border-red/15 rounded-xl p-3">
             <div className="flex items-center gap-1.5 mb-1.5">
               <svg className="w-3.5 h-3.5 text-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 17V7m0 0L6 14m7-7l7 7" />
@@ -273,7 +273,7 @@ export default function SectorDeepDive({
           { label: "Avg Rev Growth", value: data.performance.avg_revenue_growth, suffix: "%" },
           { label: "Beta", value: data.performance.sector_beta, suffix: "" },
         ].map((m) => (
-          <div key={m.label} className="bg-card border border-border rounded-sm px-3 py-2.5 text-center">
+          <div key={m.label} className="bg-card border border-border rounded-xl px-3 py-2.5 text-center">
             <div className="text-[8px] text-muted/50 tracking-wider mb-1">{m.label.toUpperCase()}</div>
             <div className={`text-sm font-bold ${
               m.color && m.value != null ? (Number(m.value) >= 0 ? "text-green" : "text-red") : "text-foreground"
@@ -285,7 +285,7 @@ export default function SectorDeepDive({
       </div>
 
       {/* ===== PERFORMANCE HEATMAP ===== */}
-      <div className="bg-card border border-border rounded-sm">
+      <div className="bg-card border border-border rounded-xl">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-1 h-4 bg-accent rounded-full" />
@@ -293,7 +293,7 @@ export default function SectorDeepDive({
           </div>
           <div className="flex gap-1">
             {(["1m", "3m", "6m"] as const).map((p) => (
-              <button key={p} onClick={() => setRetPeriod(p)} className={`px-2 py-0.5 text-[9px] tracking-wider rounded-sm transition-colors ${
+              <button key={p} onClick={() => setRetPeriod(p)} className={`px-2 py-0.5 text-[9px] tracking-wider rounded-xl transition-colors ${
                 retPeriod === p ? "bg-accent text-white" : "text-muted/50 hover:text-muted"
               }`}>{p.toUpperCase()}</button>
             ))}
@@ -310,7 +310,7 @@ export default function SectorDeepDive({
               <button
                 key={s.ticker}
                 onClick={() => onSearch(s.ticker)}
-                className="rounded-sm p-2.5 text-left transition-all hover:scale-[1.02] hover:shadow-md border border-transparent hover:border-border"
+                className="rounded-xl p-2.5 text-left transition-all hover:scale-[1.02] hover:shadow-md border border-transparent hover:border-border"
                 style={{ backgroundColor: typeof bg === "string" && bg.startsWith("rgba") ? bg : undefined }}
               >
                 <div className="flex items-center justify-between">
@@ -331,7 +331,7 @@ export default function SectorDeepDive({
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Key Players */}
         {data.key_players.length > 0 && (
-          <div className="lg:col-span-3 bg-card border border-border rounded-sm">
+          <div className="lg:col-span-3 bg-card border border-border rounded-xl">
             <div className="px-4 py-3 border-b border-border flex items-center gap-2">
               <div className="w-1 h-4 bg-accent rounded-full" />
               <span className="text-[11px] font-semibold tracking-wider">KEY PLAYERS</span>
@@ -342,9 +342,9 @@ export default function SectorDeepDive({
                 <button
                   key={kp.ticker}
                   onClick={() => onSearch(kp.ticker)}
-                  className="w-full text-left flex items-start gap-3 p-3 bg-subtle/30 rounded-sm hover:bg-accent/5 transition-colors group"
+                  className="w-full text-left flex items-start gap-3 p-3 bg-subtle/30 rounded-xl hover:bg-accent/5 transition-colors group"
                 >
-                  <div className="w-10 h-10 bg-accent/10 rounded-sm flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
+                  <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
                     <span className="text-accent text-[10px] font-black tracking-wider">{kp.ticker}</span>
                   </div>
                   <div className="min-w-0">
@@ -362,7 +362,7 @@ export default function SectorDeepDive({
 
         {/* Experts to Follow */}
         {data.experts.length > 0 && (
-          <div className="lg:col-span-2 bg-card border border-border rounded-sm">
+          <div className="lg:col-span-2 bg-card border border-border rounded-xl">
             <div className="px-4 py-3 border-b border-border flex items-center gap-2">
               <div className="w-1 h-4 bg-accent rounded-full" />
               <span className="text-[11px] font-semibold tracking-wider">EXPERTS</span>
@@ -370,10 +370,10 @@ export default function SectorDeepDive({
             </div>
             <div className="p-4 space-y-3">
               {data.experts.map((ex, i) => (
-                <div key={i} className="border border-border/50 rounded-sm p-3 hover:border-accent/20 transition-colors">
+                <div key={i} className="border border-border/50 rounded-xl p-3 hover:border-accent/20 transition-colors">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[11px] font-bold text-foreground">{ex.name}</span>
-                    <span className="text-[8px] px-1.5 py-0.5 bg-accent/8 text-accent/70 rounded-sm tracking-wider">{ex.platform}</span>
+                    <span className="text-[8px] px-1.5 py-0.5 bg-accent/8 text-accent/70 rounded-xl tracking-wider">{ex.platform}</span>
                   </div>
                   <div className="text-[9px] text-accent/60 font-mono mb-1.5">{ex.handle}</div>
                   <div className="text-[9px] text-foreground/50 leading-relaxed">{ex.why_follow}</div>
@@ -385,7 +385,7 @@ export default function SectorDeepDive({
       </div>
 
       {/* ===== TOP PICKS ===== */}
-      <div className="bg-card border border-border rounded-sm">
+      <div className="bg-card border border-border rounded-xl">
         <div className="px-4 py-3 border-b border-border flex items-center gap-2">
           <div className="w-1 h-4 bg-accent rounded-full" />
           <span className="text-[11px] font-semibold tracking-wider">TOP PICKS</span>
@@ -402,7 +402,7 @@ export default function SectorDeepDive({
             const entryHighPos = range > 0 ? ((pick.entry_zone.high - pick.stop_loss) / range) * 100 : 50;
 
             return (
-              <div key={pick.ticker} className={`border-2 rounded-sm p-4 ${pickConvColor}`}>
+              <div key={pick.ticker} className={`border-2 rounded-xl p-4 ${pickConvColor}`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-[9px] text-muted/40">#{i + 1}</span>
@@ -410,7 +410,7 @@ export default function SectorDeepDive({
                       {pick.ticker}
                     </button>
                   </div>
-                  <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-bold tracking-wider border ${badgeColor}`}>
+                  <span className={`text-[8px] px-1.5 py-0.5 rounded-xl font-bold tracking-wider border ${badgeColor}`}>
                     {pick.conviction}
                   </span>
                 </div>
@@ -455,7 +455,7 @@ export default function SectorDeepDive({
       </div>
 
       {/* ===== CATALYSTS TIMELINE ===== */}
-      <div className="bg-card border border-border rounded-sm">
+      <div className="bg-card border border-border rounded-xl">
         <div className="px-4 py-3 border-b border-border flex items-center gap-2">
           <div className="w-1 h-4 bg-accent rounded-full" />
           <span className="text-[11px] font-semibold tracking-wider">CATALYSTS TIMELINE</span>
@@ -472,8 +472,8 @@ export default function SectorDeepDive({
                   <div className={`absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-card ${impactColor(cat.impact)} ${cat.impact === "very_high" ? "animate-pulse" : ""}`} />
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-[10px] font-bold text-foreground">{cat.event}</span>
-                    <span className="text-[8px] text-muted/40 bg-subtle px-1.5 py-0.5 rounded-sm">{cat.date}</span>
-                    <span className={`text-[7px] px-1 py-0.5 rounded-sm font-bold tracking-wider text-white ${impactColor(cat.impact)}`}>
+                    <span className="text-[8px] text-muted/40 bg-subtle px-1.5 py-0.5 rounded-xl">{cat.date}</span>
+                    <span className={`text-[7px] px-1 py-0.5 rounded-xl font-bold tracking-wider text-white ${impactColor(cat.impact)}`}>
                       {cat.impact.replace("_", " ").toUpperCase()}
                     </span>
                   </div>
@@ -487,7 +487,7 @@ export default function SectorDeepDive({
 
       {/* ===== BOTTLENECKS ===== */}
       {data.bottlenecks.length > 0 && (
-        <div className="bg-card border border-border rounded-sm">
+        <div className="bg-card border border-border rounded-xl">
           <div className="px-4 py-3 border-b border-border flex items-center gap-2">
             <div className="w-1 h-4 bg-red rounded-full" />
             <span className="text-[11px] font-semibold tracking-wider">BOTTLENECKS</span>
@@ -498,9 +498,9 @@ export default function SectorDeepDive({
               const sevColor = bn.severity === "critical" ? "border-red/30 bg-red/5" : bn.severity === "high" ? "border-yellow/30 bg-yellow/5" : "border-border bg-subtle/30";
               const sevBadge = bn.severity === "critical" ? "bg-red text-white" : bn.severity === "high" ? "bg-yellow/80 text-black" : "bg-muted/20 text-muted";
               return (
-                <div key={i} className={`border rounded-sm p-3 ${sevColor}`}>
+                <div key={i} className={`border rounded-xl p-3 ${sevColor}`}>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className={`text-[7px] px-1.5 py-0.5 rounded-sm font-black tracking-wider ${sevBadge}`}>
+                    <span className={`text-[7px] px-1.5 py-0.5 rounded-xl font-black tracking-wider ${sevBadge}`}>
                       {bn.severity.toUpperCase()}
                     </span>
                     <span className="text-[11px] font-bold text-foreground">{bn.name}</span>
@@ -514,7 +514,7 @@ export default function SectorDeepDive({
       )}
 
       {/* ===== STOCKS TABLE ===== */}
-      <div className="bg-card border border-border rounded-sm">
+      <div className="bg-card border border-border rounded-xl">
         <div className="px-4 py-3 border-b border-border flex items-center gap-2">
           <div className="w-1 h-4 bg-accent rounded-full" />
           <span className="text-[11px] font-semibold tracking-wider">ALL STOCKS</span>
@@ -571,7 +571,7 @@ export default function SectorDeepDive({
                     {s.return_3m != null ? `${s.return_3m >= 0 ? "+" : ""}${s.return_3m.toFixed(1)}%` : "—"}
                   </td>
                   <td className="py-2 px-3">
-                    <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-bold tracking-wider ${
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded-xl font-bold tracking-wider ${
                       s.signal === "bullish" ? "bg-green/10 text-green" : s.signal === "bearish" ? "bg-red/10 text-red" : "bg-subtle text-muted"
                     }`}>{s.signal.toUpperCase()}</span>
                   </td>
@@ -588,7 +588,7 @@ export default function SectorDeepDive({
       {/* ===== NEWS + RISK side by side ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* News Feed */}
-        <div className="lg:col-span-3 bg-card border border-border rounded-sm">
+        <div className="lg:col-span-3 bg-card border border-border rounded-xl">
           <div className="px-4 py-3 border-b border-border flex items-center gap-2">
             <div className="w-1 h-4 bg-accent rounded-full" />
             <span className="text-[11px] font-semibold tracking-wider">SECTOR NEWS</span>
@@ -601,7 +601,7 @@ export default function SectorDeepDive({
             {data.news.map((n, i) => (
               <div key={i} className="px-4 py-3 hover:bg-subtle/30 transition-colors">
                 <div className="flex items-start gap-2">
-                  <span className="text-[8px] px-1.5 py-0.5 bg-accent/10 text-accent rounded-sm font-bold flex-shrink-0 mt-0.5">
+                  <span className="text-[8px] px-1.5 py-0.5 bg-accent/10 text-accent rounded-xl font-bold flex-shrink-0 mt-0.5">
                     {n.related_ticker}
                   </span>
                   <div className="min-w-0">
@@ -624,13 +624,13 @@ export default function SectorDeepDive({
         </div>
 
         {/* Risk Assessment */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-sm">
+        <div className="lg:col-span-2 bg-card border border-border rounded-xl">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-1 h-4 bg-accent rounded-full" />
               <span className="text-[11px] font-semibold tracking-wider">RISK ASSESSMENT</span>
             </div>
-            <span className={`text-[9px] px-2 py-0.5 rounded-sm font-bold tracking-wider border ${
+            <span className={`text-[9px] px-2 py-0.5 rounded-xl font-bold tracking-wider border ${
               data.risks.overall_risk === "HIGH" ? "bg-red/10 text-red border-red/20" :
               data.risks.overall_risk === "ELEVATED" ? "bg-yellow/10 text-yellow border-yellow/20" :
               data.risks.overall_risk === "MODERATE" ? "bg-accent/10 text-accent border-accent/20" :
@@ -655,7 +655,7 @@ export default function SectorDeepDive({
             {/* Risk factors */}
             <div className="space-y-2">
               {data.risks.factors.map((f, i) => (
-                <div key={i} className={`border rounded-sm p-2.5 ${riskBg(f.level)}`}>
+                <div key={i} className={`border rounded-xl p-2.5 ${riskBg(f.level)}`}>
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <span className={`text-[9px] font-bold tracking-wider ${riskColor(f.level)}`}>{f.name}</span>
                   </div>

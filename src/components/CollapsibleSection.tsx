@@ -18,35 +18,32 @@ export default function CollapsibleSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div>
+    <div className="rounded-xl overflow-hidden border border-border">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-2 bg-card border border-border hover:bg-accent/5 transition-colors group"
-        style={!open ? { borderBottom: "1px solid var(--color-border)" } : { borderBottom: "none" }}
+        className="w-full flex items-center justify-between px-5 py-3 bg-card hover:bg-card-hover transition-colors group"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <svg
-            className={`w-3 h-3 text-muted transition-transform ${open ? "rotate-90" : ""}`}
+            className={`w-3.5 h-3.5 text-muted transition-transform duration-200 ${open ? "rotate-90" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-          <span className="text-xs font-semibold tracking-wider text-foreground uppercase">
-            {title}
-          </span>
+          <span className="text-sm font-semibold text-foreground">{title}</span>
           {badge && (
-            <span className="text-[9px] px-1.5 py-0.5 bg-accent/10 border border-accent/30 text-accent tracking-wider">
+            <span className="text-[9px] px-2 py-0.5 rounded-md bg-accent/10 text-accent font-bold tracking-wider">
               {badge}
             </span>
           )}
         </div>
-        <span className="text-[9px] text-muted tracking-wider group-hover:text-foreground">
-          {open ? "COLLAPSE" : "EXPAND"}
+        <span className="text-[10px] text-muted/40 font-medium group-hover:text-muted transition-colors">
+          {open ? "Collapse" : "Expand"}
         </span>
       </button>
-      {open && children}
+      {open && <div className="border-t border-border">{children}</div>}
     </div>
   );
 }

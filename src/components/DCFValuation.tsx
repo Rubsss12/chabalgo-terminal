@@ -69,7 +69,7 @@ export default function DCFValuation({ ticker }: { ticker: string }) {
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-sm p-4">
+      <div className="bg-card border border-border rounded-xl p-4">
         <div className="flex items-center gap-2 text-[10px] text-muted animate-pulse">
           <div className="w-3 h-3 border border-accent/30 border-t-accent rounded-full animate-spin" />
           Computing DCF valuation...
@@ -80,7 +80,7 @@ export default function DCFValuation({ ticker }: { ticker: string }) {
 
   if (!data) {
     return (
-      <div className="bg-card border border-border rounded-sm p-4">
+      <div className="bg-card border border-border rounded-xl p-4">
         <div className="text-[10px] text-muted/50">DCF valuation unavailable (FMP API key required)</div>
       </div>
     );
@@ -90,16 +90,16 @@ export default function DCFValuation({ ticker }: { ticker: string }) {
   const rating = data.rating;
 
   return (
-    <div className="bg-card border border-border rounded-sm overflow-hidden">
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-1 h-4 bg-accent rounded-full" />
           <span className="text-[11px] font-bold tracking-wider text-foreground">DCF VALUATION</span>
-          <span className="text-[8px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-sm font-bold tracking-widest">FMP</span>
+          <span className="text-[8px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-xl font-bold tracking-widest">FMP</span>
         </div>
         {rating && (
           <div className="flex items-center gap-2">
-            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-sm ${
+            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-xl ${
               rating.recommendation === "Strong Buy" ? "bg-green/15 text-green" :
               rating.recommendation === "Buy" ? "bg-green/10 text-green/80" :
               rating.recommendation === "Hold" ? "bg-yellow/10 text-yellow" :

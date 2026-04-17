@@ -285,10 +285,10 @@ export default function CompoundSimulator() {
           </div>
           <div className="flex gap-4 text-[10px] text-muted mb-4">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-foreground/30 rounded-sm" /> Somme investie
+              <span className="w-2.5 h-2.5 bg-foreground/30 rounded-xl" /> Somme investie
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-green rounded-sm" /> Intérêts composés
+              <span className="w-2.5 h-2.5 bg-green rounded-xl" /> Intérêts composés
             </span>
           </div>
 

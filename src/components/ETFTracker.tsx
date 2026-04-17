@@ -246,7 +246,7 @@ export default function ETFTracker() {
                   >
                     <td className="py-2 text-center">
                       <div
-                        className={`w-3 h-3 border rounded-sm flex items-center justify-center ${
+                        className={`w-3 h-3 border rounded-xl flex items-center justify-center ${
                           selectedETFs.has(etf.ticker)
                             ? "border-accent bg-accent"
                             : "border-border"

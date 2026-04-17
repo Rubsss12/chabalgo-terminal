@@ -81,7 +81,7 @@ export default function FinancialStatements({ ticker }: { ticker: string }) {
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-sm p-5">
+      <div className="bg-card border border-border rounded-xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-4 h-4 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
           <span className="text-[10px] text-muted tracking-wider">FINANCIALS...</span>
@@ -97,7 +97,7 @@ export default function FinancialStatements({ ticker }: { ticker: string }) {
 
   if (error || !data) {
     return (
-      <div className="bg-card border border-border rounded-sm p-4">
+      <div className="bg-card border border-border rounded-xl p-4">
         <div className="text-[10px] text-red/70">{error || "No data"}</div>
       </div>
     );
@@ -120,7 +120,7 @@ export default function FinancialStatements({ ticker }: { ticker: string }) {
   ];
 
   return (
-    <div className="bg-card border border-border rounded-sm">
+    <div className="bg-card border border-border rounded-xl">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
