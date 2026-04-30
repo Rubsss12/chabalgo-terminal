@@ -6527,6 +6527,203 @@ def fmp_key_metrics(ticker: str):
     })
 
 
+# =========================================================
+# COINGECKO — Crypto Market Data
+# =========================================================
+
+_crypto_cache: Dict[str, Any] = {}
+_CRYPTO_CACHE_TTL = 300  # 5 min
+
+
+def _coingecko_get(endpoint: str, params: dict = None) -> Optional[Any]:
+    """Fetch from CoinGecko free API."""
+    cache_key = f"cg_{endpoint}_{json.dumps(params or {}, sort_keys=True)}"
+    cached = _crypto_cache.get(cache_key)
+    if cached and _time.time() - cached["_ts"] < _CRYPTO_CACHE_TTL:
+        return cached["data"]
+    try:
+        p = params or {}
+        r = requests.get(
+            f"https://api.coingecko.com/api/v3/{endpoint}",
+            params=p,
+            headers={"accept": "application/json"},
+            timeout=10,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            _crypto_cache[cache_key] = {"_ts": _time.time(), "data": data}
+            return data
+    except Exception:
+        pass
+    return None
+
+
+@app.get("/crypto/markets")
+def crypto_markets(limit: int = 50, page: int = 1):
+    """Top cryptocurrencies by market cap with price, volume, and changes."""
+    data = _coingecko_get("coins/markets", {
+        "vs_currency": "usd",
+        "order": "market_cap_desc",
+        "per_page": min(limit, 100),
+        "page": page,
+        "sparkline": "true",
+        "price_change_percentage": "1h,24h,7d,30d",
+    })
+    if not data:
+        raise HTTPException(status_code=502, detail="CoinGecko API unavailable")
+
+    coins = []
+    for c in data:
+        coins.append({
+            "id": c.get("id", ""),
+            "symbol": (c.get("symbol") or "").upper(),
+            "name": c.get("name", ""),
+            "image": c.get("image", ""),
+            "price": c.get("current_price"),
+            "market_cap": c.get("market_cap"),
+            "market_cap_rank": c.get("market_cap_rank"),
+            "volume_24h": c.get("total_volume"),
+            "change_1h": c.get("price_change_percentage_1h_in_currency"),
+            "change_24h": c.get("price_change_percentage_24h_in_currency"),
+            "change_7d": c.get("price_change_percentage_7d_in_currency"),
+            "change_30d": c.get("price_change_percentage_30d_in_currency"),
+            "ath": c.get("ath"),
+            "ath_change_pct": c.get("ath_change_percentage"),
+            "circulating_supply": c.get("circulating_supply"),
+            "total_supply": c.get("total_supply"),
+            "sparkline_7d": c.get("sparkline_in_7d", {}).get("price", []),
+        })
+
+    return _sanitize({"coins": coins, "count": len(coins), "page": page})
+
+
+@app.get("/crypto/trending")
+def crypto_trending():
+    """Trending coins in the last 24 hours."""
+    data = _coingecko_get("search/trending")
+    if not data:
+        raise HTTPException(status_code=502, detail="CoinGecko API unavailable")
+
+    coins = []
+    for item in data.get("coins", []):
+        c = item.get("item", {})
+        coins.append({
+            "id": c.get("id", ""),
+            "symbol": (c.get("symbol") or "").upper(),
+            "name": c.get("name", ""),
+            "image": c.get("small", ""),
+            "market_cap_rank": c.get("market_cap_rank"),
+            "price_btc": c.get("price_btc"),
+            "score": c.get("score"),
+        })
+
+    nfts = []
+    for item in data.get("nfts", []):
+        nfts.append({
+            "id": item.get("id", ""),
+            "name": item.get("name", ""),
+            "symbol": (item.get("symbol") or "").upper(),
+            "thumb": item.get("thumb", ""),
+        })
+
+    return _sanitize({"coins": coins, "nfts": nfts})
+
+
+@app.get("/crypto/{coin_id}")
+def crypto_detail(coin_id: str):
+    """Detailed data for a single cryptocurrency."""
+    data = _coingecko_get(f"coins/{coin_id}", {
+        "localization": "false",
+        "tickers": "false",
+        "community_data": "false",
+        "developer_data": "false",
+        "sparkline": "true",
+    })
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Coin '{coin_id}' not found")
+
+    market = data.get("market_data", {})
+    return _sanitize({
+        "id": data.get("id", ""),
+        "symbol": (data.get("symbol") or "").upper(),
+        "name": data.get("name", ""),
+        "image": data.get("image", {}).get("large", ""),
+        "description": (data.get("description", {}).get("en") or "")[:500],
+        "market_cap_rank": data.get("market_cap_rank"),
+        "price": market.get("current_price", {}).get("usd"),
+        "market_cap": market.get("market_cap", {}).get("usd"),
+        "volume_24h": market.get("total_volume", {}).get("usd"),
+        "change_24h": market.get("price_change_percentage_24h"),
+        "change_7d": market.get("price_change_percentage_7d"),
+        "change_30d": market.get("price_change_percentage_30d"),
+        "change_1y": market.get("price_change_percentage_1y"),
+        "ath": market.get("ath", {}).get("usd"),
+        "ath_change_pct": market.get("ath_change_percentage", {}).get("usd"),
+        "ath_date": market.get("ath_date", {}).get("usd"),
+        "atl": market.get("atl", {}).get("usd"),
+        "circulating_supply": market.get("circulating_supply"),
+        "total_supply": market.get("total_supply"),
+        "max_supply": market.get("max_supply"),
+        "high_24h": market.get("high_24h", {}).get("usd"),
+        "low_24h": market.get("low_24h", {}).get("usd"),
+        "sparkline_7d": market.get("sparkline_7d", {}).get("price", []),
+        "categories": data.get("categories", []),
+        "genesis_date": data.get("genesis_date"),
+        "sentiment_up": data.get("sentiment_votes_up_percentage"),
+        "sentiment_down": data.get("sentiment_votes_down_percentage"),
+    })
+
+
+@app.get("/crypto/{coin_id}/chart")
+def crypto_chart(coin_id: str, days: int = 30):
+    """Historical price chart data for a cryptocurrency."""
+    data = _coingecko_get(f"coins/{coin_id}/market_chart", {
+        "vs_currency": "usd",
+        "days": min(days, 365),
+    })
+    if not data:
+        raise HTTPException(status_code=404, detail=f"Chart data not found for '{coin_id}'")
+
+    prices = []
+    for ts, price in data.get("prices", []):
+        prices.append({
+            "timestamp": int(ts),
+            "date": datetime.datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M"),
+            "price": price,
+        })
+
+    volumes = []
+    for ts, vol in data.get("total_volumes", []):
+        volumes.append({"timestamp": int(ts), "volume": vol})
+
+    return _sanitize({
+        "coin_id": coin_id,
+        "days": days,
+        "prices": prices,
+        "volumes": volumes,
+        "count": len(prices),
+    })
+
+
+@app.get("/crypto/global/stats")
+def crypto_global():
+    """Global crypto market stats."""
+    data = _coingecko_get("global")
+    if not data:
+        raise HTTPException(status_code=502, detail="CoinGecko API unavailable")
+
+    g = data.get("data", {})
+    return _sanitize({
+        "active_coins": g.get("active_cryptocurrencies"),
+        "markets": g.get("markets"),
+        "total_market_cap_usd": g.get("total_market_cap", {}).get("usd"),
+        "total_volume_24h_usd": g.get("total_volume", {}).get("usd"),
+        "btc_dominance": g.get("market_cap_percentage", {}).get("btc"),
+        "eth_dominance": g.get("market_cap_percentage", {}).get("eth"),
+        "market_cap_change_24h": g.get("market_cap_change_percentage_24h_usd"),
+    })
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

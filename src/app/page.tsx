@@ -35,12 +35,13 @@ import SectorDeepDive from "@/components/SectorDeepDive";
 import MacroDashboard from "@/components/MacroDashboard";
 import SECFilings from "@/components/SECFilings";
 import DCFValuation from "@/components/DCFValuation";
+import CryptoMarkets from "@/components/CryptoMarkets";
 import { AnalysisData } from "@/lib/types";
 import { fetchAnalysis } from "@/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type LandingTab = "sectors" | "overview" | "screeners" | "invest";
+type LandingTab = "sectors" | "overview" | "crypto" | "screeners" | "invest";
 
 interface MiniIndex {
   name: string;
@@ -50,9 +51,9 @@ interface MiniIndex {
 
 /* ─── SECTOR DATA ─── */
 const FEATURED_SECTORS = [
-  { key: "photonics-optical", name: "Photonics & Optical", tagline: "The invisible backbone of AI", gradient: "from-cyan-500/20 via-blue-500/10 to-transparent", ring: "ring-cyan-500/20", accent: "text-cyan-400", badge: "HOT", badgeColor: "bg-red-500/90", stocks: "COHR  AAOI  LITE  CIEN", desc: "800G/1.6T transceivers, optical datacenter supply chain" },
-  { key: "ai-infrastructure", name: "AI Infrastructure", tagline: "The biggest CapEx cycle in history", gradient: "from-violet-500/20 via-purple-500/10 to-transparent", ring: "ring-violet-500/20", accent: "text-violet-400", badge: "MEGA", badgeColor: "bg-violet-500/90", stocks: "SMCI  PATH  AI  SOUN", desc: "$200B+ hyperscaler spend, GPU clusters, AI software" },
-  { key: "space-defense-tech", name: "Space & Defense Tech", tagline: "NewSpace 2.0 goes commercial", gradient: "from-slate-400/15 via-zinc-500/10 to-transparent", ring: "ring-slate-400/20", accent: "text-slate-300", badge: "GROWTH", badgeColor: "bg-accent/90", stocks: "RKLB  ASTS  LUNR  PL", desc: "Launchers, LEO constellations, satellite imaging" },
+  { key: "photonics-optical", name: "Photonics & Optical", tagline: "The invisible backbone of AI", gradient: "from-blue-500/8 via-cyan-500/5 to-transparent", ring: "ring-blue-500/15", accent: "text-blue-600", badge: "HOT", badgeColor: "bg-red-500/90", stocks: "COHR  AAOI  LITE  CIEN", desc: "800G/1.6T transceivers, optical datacenter supply chain" },
+  { key: "ai-infrastructure", name: "AI Infrastructure", tagline: "The biggest CapEx cycle in history", gradient: "from-purple-500/8 via-violet-500/5 to-transparent", ring: "ring-purple-500/15", accent: "text-purple-600", badge: "MEGA", badgeColor: "bg-violet-500/90", stocks: "SMCI  PATH  AI  SOUN", desc: "$200B+ hyperscaler spend, GPU clusters, AI software" },
+  { key: "space-defense-tech", name: "Space & Defense Tech", tagline: "NewSpace 2.0 goes commercial", gradient: "from-slate-500/8 via-zinc-500/5 to-transparent", ring: "ring-slate-500/15", accent: "text-slate-600", badge: "GROWTH", badgeColor: "bg-accent/90", stocks: "RKLB  ASTS  LUNR  PL", desc: "Launchers, LEO constellations, satellite imaging" },
 ];
 
 const OTHER_SECTORS = [
@@ -149,6 +150,7 @@ export default function Home() {
   const TABS: { key: LandingTab; label: string; icon: string }[] = [
     { key: "sectors", label: "Sectors", icon: "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" },
     { key: "overview", label: "Overview", icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" },
+    { key: "crypto", label: "Crypto", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 10v1m6-6a6 6 0 11-12 0 6 6 0 0112 0z" },
     { key: "screeners", label: "Screeners", icon: "M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" },
     { key: "invest", label: "Invest", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
   ];
@@ -193,7 +195,7 @@ export default function Home() {
               </div>
             )}
             <div className="flex items-center gap-2 text-xs">
-              <span className={`w-2 h-2 rounded-full ${isMarketOpen() ? "bg-green shadow-[0_0_6px_rgba(0,212,170,0.5)]" : "bg-red/40"}`} />
+              <span className={`w-2 h-2 rounded-full ${isMarketOpen() ? "bg-green shadow-[0_0_6px_rgba(45,139,78,0.4)]" : "bg-red/40"}`} />
               <span className="text-muted font-medium">{isMarketOpen() ? "Market Open" : "Market Closed"}</span>
             </div>
             <div className="hidden sm:block text-muted text-xs tabular-nums">
@@ -465,7 +467,7 @@ export default function Home() {
                     <button
                       key={s.key}
                       onClick={() => setDeepDiveSector(s.key)}
-                      className={`relative overflow-hidden bg-gradient-to-br ${s.gradient} border border-border rounded-xl p-6 text-left transition-all hover:border-border-light hover:shadow-xl hover:shadow-black/20 group ring-1 ${s.ring} ring-inset`}
+                      className={`relative overflow-hidden bg-gradient-to-br ${s.gradient} border border-border rounded-xl p-6 text-left transition-all hover:border-border-light hover:shadow-xl hover:shadow-black/5 group ring-1 ${s.ring} ring-inset`}
                     >
                       {/* Badge */}
                       <div className="absolute top-4 right-4">
@@ -544,6 +546,11 @@ export default function Home() {
                 </div>
                 <EconomicCalendar />
               </div>
+            )}
+
+            {/* ═══════ CRYPTO TAB ═══════ */}
+            {landingTab === "crypto" && (
+              <CryptoMarkets />
             )}
 
             {/* ═══════ SCREENERS TAB ═══════ */}
