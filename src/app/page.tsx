@@ -36,6 +36,7 @@ import MacroDashboard from "@/components/MacroDashboard";
 import SECFilings from "@/components/SECFilings";
 import DCFValuation from "@/components/DCFValuation";
 import CryptoMarkets from "@/components/CryptoMarkets";
+import CryptoAnalysis from "@/components/CryptoAnalysis";
 import { AnalysisData } from "@/lib/types";
 import { fetchAnalysis } from "@/lib/api";
 
@@ -73,6 +74,7 @@ export default function Home() {
   const [landingTab, setLandingTab] = useState<LandingTab>("sectors");
   const [deepDiveSector, setDeepDiveSector] = useState<string | null>(null);
   const [indices, setIndices] = useState<MiniIndex[]>([]);
+  const [cryptoCoinId, setCryptoCoinId] = useState<string | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentTickerRef = useRef<string | null>(null);
 
@@ -550,7 +552,11 @@ export default function Home() {
 
             {/* ═══════ CRYPTO TAB ═══════ */}
             {landingTab === "crypto" && (
-              <CryptoMarkets />
+              cryptoCoinId ? (
+                <CryptoAnalysis coinId={cryptoCoinId} onClose={() => setCryptoCoinId(null)} />
+              ) : (
+                <CryptoMarkets onSelectCoin={(id) => { setCryptoCoinId(id); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
+              )
             )}
 
             {/* ═══════ SCREENERS TAB ═══════ */}

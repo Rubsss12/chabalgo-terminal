@@ -6724,6 +6724,265 @@ def crypto_global():
     })
 
 
+@app.get("/crypto/analyze/{coin_id}")
+def crypto_analyze(coin_id: str):
+    """Full analysis for a single cryptocurrency — the crypto equivalent of /analyze/{ticker}."""
+    # 1. Detail data
+    detail = _coingecko_get(f"coins/{coin_id}", {
+        "localization": "false",
+        "tickers": "false",
+        "community_data": "true",
+        "developer_data": "true",
+        "sparkline": "true",
+    })
+    if not detail:
+        raise HTTPException(status_code=404, detail=f"Coin '{coin_id}' not found")
+
+    market = detail.get("market_data", {})
+
+    # 2. Chart data — 90 days
+    chart_90 = _coingecko_get(f"coins/{coin_id}/market_chart", {
+        "vs_currency": "usd", "days": 90,
+    })
+    chart_365 = _coingecko_get(f"coins/{coin_id}/market_chart", {
+        "vs_currency": "usd", "days": 365,
+    })
+
+    prices_90 = []
+    if chart_90:
+        for ts, p in chart_90.get("prices", []):
+            prices_90.append({"date": datetime.datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d"), "price": p})
+    prices_365 = []
+    if chart_365:
+        for ts, p in chart_365.get("prices", []):
+            prices_365.append({"date": datetime.datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d"), "price": p})
+    volumes_90 = []
+    if chart_90:
+        for ts, v in chart_90.get("total_volumes", []):
+            volumes_90.append({"date": datetime.datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d"), "volume": v})
+
+    # 3. Technical analysis from price data
+    sparkline = market.get("sparkline_7d", {}).get("price", [])
+    technicals = {}
+    if len(sparkline) >= 24:
+        current = sparkline[-1]
+        ma_7d = sum(sparkline) / len(sparkline)
+        recent_24 = sparkline[-24:]
+        ma_24h = sum(recent_24) / len(recent_24)
+        high_7d = max(sparkline)
+        low_7d = min(sparkline)
+        range_7d = high_7d - low_7d
+
+        # RSI proxy from 7d sparkline
+        gains, losses = [], []
+        for i in range(1, len(sparkline)):
+            diff = sparkline[i] - sparkline[i - 1]
+            if diff > 0:
+                gains.append(diff)
+            else:
+                losses.append(abs(diff))
+        avg_gain = sum(gains) / max(len(gains), 1)
+        avg_loss = sum(losses) / max(len(losses), 1)
+        rs = avg_gain / avg_loss if avg_loss > 0 else 100
+        rsi = 100 - (100 / (1 + rs))
+
+        # Momentum
+        momentum_pct = ((current - sparkline[0]) / sparkline[0]) * 100 if sparkline[0] > 0 else 0
+
+        # Volatility (std dev of hourly returns)
+        returns = []
+        for i in range(1, len(sparkline)):
+            if sparkline[i - 1] > 0:
+                returns.append((sparkline[i] - sparkline[i - 1]) / sparkline[i - 1])
+        volatility = (sum(r ** 2 for r in returns) / max(len(returns), 1)) ** 0.5 * 100
+
+        # Support/Resistance from 7d range
+        support = low_7d
+        resistance = high_7d
+        position_in_range = ((current - low_7d) / range_7d * 100) if range_7d > 0 else 50
+
+        technicals = {
+            "rsi_7d": round(rsi, 1),
+            "rsi_signal": "overbought" if rsi > 70 else "oversold" if rsi < 30 else "neutral",
+            "ma_7d": round(ma_7d, 4),
+            "ma_24h": round(ma_24h, 4),
+            "above_ma_7d": current > ma_7d,
+            "momentum_7d_pct": round(momentum_pct, 2),
+            "volatility_7d": round(volatility, 2),
+            "support_7d": round(support, 4),
+            "resistance_7d": round(resistance, 4),
+            "range_position_pct": round(position_in_range, 1),
+            "high_7d": round(high_7d, 4),
+            "low_7d": round(low_7d, 4),
+        }
+
+    # 4. Verdict scoring
+    score = 50
+    signals = []
+    ch24 = market.get("price_change_percentage_24h") or 0
+    ch7 = market.get("price_change_percentage_7d") or 0
+    ch30 = market.get("price_change_percentage_30d") or 0
+
+    # Momentum signals
+    if ch24 > 5:
+        score += 8; signals.append({"name": "24h Momentum", "signal": "bullish", "detail": f"+{ch24:.1f}% in 24h"})
+    elif ch24 > 0:
+        score += 3; signals.append({"name": "24h Momentum", "signal": "slightly_bullish", "detail": f"+{ch24:.1f}%"})
+    elif ch24 > -5:
+        score -= 3; signals.append({"name": "24h Momentum", "signal": "slightly_bearish", "detail": f"{ch24:.1f}%"})
+    else:
+        score -= 8; signals.append({"name": "24h Momentum", "signal": "bearish", "detail": f"{ch24:.1f}%"})
+
+    if ch7 > 10:
+        score += 10; signals.append({"name": "7d Trend", "signal": "bullish", "detail": f"+{ch7:.1f}% this week"})
+    elif ch7 > 0:
+        score += 5; signals.append({"name": "7d Trend", "signal": "slightly_bullish", "detail": f"+{ch7:.1f}%"})
+    elif ch7 > -10:
+        score -= 5; signals.append({"name": "7d Trend", "signal": "slightly_bearish", "detail": f"{ch7:.1f}%"})
+    else:
+        score -= 10; signals.append({"name": "7d Trend", "signal": "bearish", "detail": f"{ch7:.1f}%"})
+
+    if ch30 > 20:
+        score += 10; signals.append({"name": "30d Trend", "signal": "bullish", "detail": f"+{ch30:.1f}% this month"})
+    elif ch30 > 0:
+        score += 5; signals.append({"name": "30d Trend", "signal": "slightly_bullish", "detail": f"+{ch30:.1f}%"})
+    elif ch30 > -20:
+        score -= 5; signals.append({"name": "30d Trend", "signal": "slightly_bearish", "detail": f"{ch30:.1f}%"})
+    else:
+        score -= 10; signals.append({"name": "30d Trend", "signal": "bearish", "detail": f"{ch30:.1f}%"})
+
+    # RSI signal
+    rsi_val = technicals.get("rsi_7d", 50)
+    if rsi_val > 70:
+        score -= 5; signals.append({"name": "RSI", "signal": "overbought", "detail": f"RSI {rsi_val} — overheated"})
+    elif rsi_val < 30:
+        score += 5; signals.append({"name": "RSI", "signal": "oversold", "detail": f"RSI {rsi_val} — potential bounce"})
+    else:
+        signals.append({"name": "RSI", "signal": "neutral", "detail": f"RSI {rsi_val}"})
+
+    # ATH distance
+    ath = market.get("ath", {}).get("usd", 0)
+    price = market.get("current_price", {}).get("usd", 0)
+    ath_drop = market.get("ath_change_percentage", {}).get("usd", 0)
+    if ath_drop and ath_drop > -10:
+        score += 5; signals.append({"name": "ATH Proximity", "signal": "bullish", "detail": f"Near all-time high ({ath_drop:+.1f}%)"})
+    elif ath_drop and ath_drop < -70:
+        score -= 5; signals.append({"name": "ATH Distance", "signal": "bearish", "detail": f"{ath_drop:.0f}% below ATH"})
+    elif ath_drop:
+        signals.append({"name": "ATH Distance", "signal": "neutral", "detail": f"{ath_drop:.0f}% below ATH"})
+
+    # Volume signal
+    vol = market.get("total_volume", {}).get("usd", 0)
+    mcap = market.get("market_cap", {}).get("usd", 0)
+    if mcap > 0 and vol > 0:
+        vol_ratio = vol / mcap
+        if vol_ratio > 0.15:
+            score += 3; signals.append({"name": "Volume/MCap", "signal": "high_activity", "detail": f"{vol_ratio:.1%} — strong volume"})
+        elif vol_ratio < 0.02:
+            score -= 3; signals.append({"name": "Volume/MCap", "signal": "low_activity", "detail": f"{vol_ratio:.1%} — thin volume"})
+        else:
+            signals.append({"name": "Volume/MCap", "signal": "normal", "detail": f"{vol_ratio:.1%}"})
+
+    # Sentiment
+    sent_up = detail.get("sentiment_votes_up_percentage")
+    sent_down = detail.get("sentiment_votes_down_percentage")
+    if sent_up is not None and sent_up > 70:
+        score += 3; signals.append({"name": "Community Sentiment", "signal": "bullish", "detail": f"{sent_up:.0f}% positive"})
+    elif sent_up is not None and sent_up < 40:
+        score -= 3; signals.append({"name": "Community Sentiment", "signal": "bearish", "detail": f"{sent_up:.0f}% positive"})
+
+    score = max(10, min(90, score))
+    if score >= 70:
+        verdict_label = "BULLISH"
+        verdict_advice = "Strong bullish signals across momentum, trend and sentiment. Consider accumulating on dips."
+    elif score >= 55:
+        verdict_label = "SLIGHTLY BULLISH"
+        verdict_advice = "Positive momentum but mixed signals. Position sizing matters — don't go all in."
+    elif score >= 45:
+        verdict_label = "NEUTRAL"
+        verdict_advice = "No clear directional bias. Wait for a breakout or breakdown before committing capital."
+    elif score >= 30:
+        verdict_label = "SLIGHTLY BEARISH"
+        verdict_advice = "Weakening momentum. Consider taking profits or tightening stops."
+    else:
+        verdict_label = "BEARISH"
+        verdict_advice = "Multiple bearish signals. Avoid catching falling knives — wait for stabilization."
+
+    # 5. Supply analysis
+    circ = market.get("circulating_supply")
+    total = market.get("total_supply")
+    max_supply = market.get("max_supply")
+    supply_analysis = {}
+    if circ:
+        supply_analysis["circulating"] = circ
+        supply_analysis["total"] = total
+        supply_analysis["max"] = max_supply
+        if max_supply and max_supply > 0:
+            supply_analysis["pct_mined"] = round((circ / max_supply) * 100, 1)
+        if total and total > 0:
+            supply_analysis["pct_circulating"] = round((circ / total) * 100, 1)
+        if price and circ:
+            supply_analysis["fully_diluted_valuation"] = (max_supply or total or circ) * price
+
+    # 6. Community & developer data
+    community = detail.get("community_data", {})
+    developer = detail.get("developer_data", {})
+    social = {}
+    if community:
+        social["twitter_followers"] = community.get("twitter_followers")
+        social["reddit_subscribers"] = community.get("reddit_subscribers")
+        social["reddit_active_48h"] = community.get("reddit_accounts_active_48h")
+    if developer:
+        social["github_forks"] = developer.get("forks")
+        social["github_stars"] = developer.get("stars")
+        social["github_subscribers"] = developer.get("subscribers")
+        social["commit_count_4w"] = developer.get("commit_count_4_weeks")
+
+    result = _sanitize({
+        "id": detail.get("id", ""),
+        "symbol": (detail.get("symbol") or "").upper(),
+        "name": detail.get("name", ""),
+        "image": detail.get("image", {}).get("large", ""),
+        "description": (detail.get("description", {}).get("en") or "")[:600],
+        "categories": detail.get("categories", []),
+        "genesis_date": detail.get("genesis_date"),
+        "market_cap_rank": detail.get("market_cap_rank"),
+        "price": price,
+        "market_cap": mcap,
+        "volume_24h": vol,
+        "change_1h": market.get("price_change_percentage_1h_in_currency", {}).get("usd"),
+        "change_24h": ch24,
+        "change_7d": ch7,
+        "change_14d": market.get("price_change_percentage_14d"),
+        "change_30d": ch30,
+        "change_1y": market.get("price_change_percentage_1y"),
+        "ath": ath,
+        "ath_change_pct": ath_drop,
+        "ath_date": market.get("ath_date", {}).get("usd"),
+        "atl": market.get("atl", {}).get("usd"),
+        "atl_date": market.get("atl_date", {}).get("usd"),
+        "high_24h": market.get("high_24h", {}).get("usd"),
+        "low_24h": market.get("low_24h", {}).get("usd"),
+        "supply": supply_analysis,
+        "technicals": technicals,
+        "verdict": {
+            "score": score,
+            "label": verdict_label,
+            "advice": verdict_advice,
+            "signals": signals,
+        },
+        "social": social,
+        "sentiment_up": sent_up,
+        "sentiment_down": sent_down,
+        "chart_90d": prices_90,
+        "chart_365d": prices_365,
+        "volumes_90d": volumes_90,
+        "sparkline_7d": sparkline,
+    })
+
+    return result
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

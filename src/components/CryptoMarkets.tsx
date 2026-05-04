@@ -77,7 +77,11 @@ function MiniSparkline({ data, color }: { data: number[]; color: string }) {
 
 type SortKey = "rank" | "price" | "change_24h" | "change_7d" | "market_cap" | "volume_24h";
 
-export default function CryptoMarkets() {
+interface CryptoMarketsProps {
+  onSelectCoin?: (coinId: string) => void;
+}
+
+export default function CryptoMarkets({ onSelectCoin }: CryptoMarketsProps) {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [trending, setTrending] = useState<TrendingCoin[]>([]);
   const [global, setGlobal] = useState<GlobalStats | null>(null);
@@ -165,7 +169,7 @@ export default function CryptoMarkets() {
           </div>
           <div className="flex items-center gap-3 overflow-x-auto pb-1">
             {trending.slice(0, 10).map((c) => (
-              <div key={c.id} className="flex items-center gap-2 px-3 py-2 bg-subtle rounded-lg flex-shrink-0">
+              <div key={c.id} className={`flex items-center gap-2 px-3 py-2 bg-subtle rounded-lg flex-shrink-0 ${onSelectCoin ? "cursor-pointer hover:bg-accent/8 hover:border-accent/15 transition-colors" : ""}`} onClick={() => onSelectCoin?.(c.id)}>
                 {c.image && <img src={c.image} alt={c.symbol} className="w-5 h-5 rounded-full" />}
                 <span className="text-xs font-bold text-foreground">{c.symbol}</span>
                 <span className="text-[10px] text-muted">{c.name}</span>
@@ -203,7 +207,7 @@ export default function CryptoMarkets() {
             </thead>
             <tbody>
               {sorted.map((c) => (
-                <tr key={c.id} className="border-b border-border/40 hover:bg-subtle/30 transition-colors">
+                <tr key={c.id} className={`border-b border-border/40 hover:bg-subtle/30 transition-colors ${onSelectCoin ? "cursor-pointer" : ""}`} onClick={() => onSelectCoin?.(c.id)}>
                   <td className="px-4 py-2.5 text-muted/50 tabular-nums">{c.market_cap_rank ?? "—"}</td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
