@@ -6550,7 +6550,7 @@ def _coingecko_get(endpoint: str, params: dict = None) -> Optional[Any]:
             f"https://api.coingecko.com/api/v3/{endpoint}",
             params=p,
             headers={"accept": "application/json"},
-            timeout=10,
+            timeout=6,
         )
         if r.status_code == 200:
             data = r.json()
@@ -6743,13 +6743,12 @@ def crypto_analyze(coin_id: str):
 
     market = detail.get("market_data", {})
 
-    # 2. Chart data — 90 days
-    chart_90 = _coingecko_get(f"coins/{coin_id}/market_chart", {
-        "vs_currency": "usd", "days": 90,
-    })
-    chart_365 = _coingecko_get(f"coins/{coin_id}/market_chart", {
-        "vs_currency": "usd", "days": 365,
-    })
+    # 2. Chart data — fetch 90d and 365d in parallel
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        f90 = pool.submit(_coingecko_get, f"coins/{coin_id}/market_chart", {"vs_currency": "usd", "days": 90})
+        f365 = pool.submit(_coingecko_get, f"coins/{coin_id}/market_chart", {"vs_currency": "usd", "days": 365})
+        chart_90 = f90.result(timeout=15)
+        chart_365 = f365.result(timeout=15)
 
     prices_90 = []
     if chart_90:

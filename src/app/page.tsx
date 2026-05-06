@@ -1,44 +1,62 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import SearchBar from "@/components/SearchBar";
 import Rankings from "@/components/Rankings";
-import Header from "@/components/Header";
-import Fundamentals from "@/components/Fundamentals";
-import Technicals from "@/components/Technicals";
-import Charts from "@/components/Charts";
-import Verdict from "@/components/Verdict";
-import ShortTermVerdict from "@/components/ShortTermVerdict";
-import EarningsPanel from "@/components/EarningsPanel";
-import InsiderTransactions from "@/components/InsiderTransactions";
-import PeerComparison from "@/components/PeerComparison";
-import NewsPanel from "@/components/NewsPanel";
-import SixMonthVision from "@/components/SixMonthVision";
-import CongressTrades from "@/components/CongressTrades";
-import Screener from "@/components/Screener";
-import ETFTracker from "@/components/ETFTracker";
-import CompoundSimulator from "@/components/CompoundSimulator";
-import IPOWatchlist from "@/components/IPOWatchlist";
-import OptionsFlow from "@/components/OptionsFlow";
-import EconomicCalendar from "@/components/EconomicCalendar";
-import SectorHeatmap from "@/components/SectorHeatmap";
-import FearGreedIndex from "@/components/FearGreedIndex";
-import InsiderScreener from "@/components/InsiderScreener";
-import DailyBriefing from "@/components/DailyBriefing";
 import CollapsibleSection from "@/components/CollapsibleSection";
-import Portfolio from "@/components/Portfolio";
-import FairValue from "@/components/FairValue";
-import SwotAnalysis from "@/components/SwotAnalysis";
-import FinancialStatements from "@/components/FinancialStatements";
-import StockComparison from "@/components/StockComparison";
-import SectorDeepDive from "@/components/SectorDeepDive";
-import MacroDashboard from "@/components/MacroDashboard";
-import SECFilings from "@/components/SECFilings";
-import DCFValuation from "@/components/DCFValuation";
-import CryptoMarkets from "@/components/CryptoMarkets";
-import CryptoAnalysis from "@/components/CryptoAnalysis";
 import { AnalysisData } from "@/lib/types";
 import { fetchAnalysis } from "@/lib/api";
+
+/* ─── Skeleton loader for lazy components ─── */
+function LazyFallback() {
+  return (
+    <div className="bg-card border border-border rounded-xl p-8 flex items-center justify-center min-h-[120px]">
+      <div className="flex flex-col items-center gap-2">
+        <div className="w-8 h-8 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
+        <span className="text-xs text-muted">Loading...</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Eagerly loaded: only what's visible on first paint ─── */
+/* SearchBar + Rankings already imported above (nav bar) */
+
+/* ─── Lazy loaded: everything else splits into separate chunks ─── */
+const Header = dynamic(() => import("@/components/Header"), { ssr: false });
+const Fundamentals = dynamic(() => import("@/components/Fundamentals"), { ssr: false });
+const Technicals = dynamic(() => import("@/components/Technicals"), { ssr: false });
+const Charts = dynamic(() => import("@/components/Charts"), { ssr: false });
+const Verdict = dynamic(() => import("@/components/Verdict"), { ssr: false });
+const ShortTermVerdict = dynamic(() => import("@/components/ShortTermVerdict"), { ssr: false });
+const EarningsPanel = dynamic(() => import("@/components/EarningsPanel"), { ssr: false });
+const InsiderTransactions = dynamic(() => import("@/components/InsiderTransactions"), { ssr: false });
+const PeerComparison = dynamic(() => import("@/components/PeerComparison"), { ssr: false });
+const NewsPanel = dynamic(() => import("@/components/NewsPanel"), { ssr: false });
+const SixMonthVision = dynamic(() => import("@/components/SixMonthVision"), { ssr: false });
+const CongressTrades = dynamic(() => import("@/components/CongressTrades"), { ssr: false });
+const Screener = dynamic(() => import("@/components/Screener"), { ssr: false });
+const ETFTracker = dynamic(() => import("@/components/ETFTracker"), { ssr: false });
+const CompoundSimulator = dynamic(() => import("@/components/CompoundSimulator"), { ssr: false });
+const IPOWatchlist = dynamic(() => import("@/components/IPOWatchlist"), { ssr: false });
+const OptionsFlow = dynamic(() => import("@/components/OptionsFlow"), { ssr: false });
+const EconomicCalendar = dynamic(() => import("@/components/EconomicCalendar"), { ssr: false });
+const SectorHeatmap = dynamic(() => import("@/components/SectorHeatmap"), { ssr: false });
+const FearGreedIndex = dynamic(() => import("@/components/FearGreedIndex"), { ssr: false });
+const InsiderScreener = dynamic(() => import("@/components/InsiderScreener"), { ssr: false });
+const DailyBriefing = dynamic(() => import("@/components/DailyBriefing"), { ssr: false });
+const Portfolio = dynamic(() => import("@/components/Portfolio"), { ssr: false });
+const FairValue = dynamic(() => import("@/components/FairValue"), { ssr: false });
+const SwotAnalysis = dynamic(() => import("@/components/SwotAnalysis"), { ssr: false });
+const FinancialStatements = dynamic(() => import("@/components/FinancialStatements"), { ssr: false });
+const StockComparison = dynamic(() => import("@/components/StockComparison"), { ssr: false });
+const SectorDeepDive = dynamic(() => import("@/components/SectorDeepDive"), { ssr: false });
+const MacroDashboard = dynamic(() => import("@/components/MacroDashboard"), { ssr: false });
+const SECFilings = dynamic(() => import("@/components/SECFilings"), { ssr: false });
+const DCFValuation = dynamic(() => import("@/components/DCFValuation"), { ssr: false });
+const CryptoMarkets = dynamic(() => import("@/components/CryptoMarkets"), { ssr: false });
+const CryptoAnalysis = dynamic(() => import("@/components/CryptoAnalysis"), { ssr: false });
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
