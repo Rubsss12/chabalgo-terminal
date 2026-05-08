@@ -5038,79 +5038,67 @@ def daily_briefing():
     today = datetime.date.today()
     sections = []
 
-    # 1. Major indices
+    # 1. Major indices — use Yahoo HTTP endpoint via _fetch_ticker_quote (no rate limit)
     indices_data = {}
-    for name, ticker in [("S&P 500", "^GSPC"), ("Nasdaq", "^IXIC"), ("Dow Jones", "^DJI"), ("Russell 2000", "^RUT"), ("VIX", "^VIX")]:
-        try:
-            t = yf.Ticker(ticker)
-            h = t.history(period="5d")
-            if len(h) >= 2:
-                current = round(float(h["Close"].iloc[-1]), 2)
-                prev = float(h["Close"].iloc[-2])
-                change = round(((current - prev) / prev) * 100, 2)
-                indices_data[name] = {"price": current, "change_pct": change}
-        except Exception:
-            continue
+    index_map = [("S&P 500", "^GSPC"), ("Nasdaq", "^IXIC"), ("Dow Jones", "^DJI"), ("Russell 2000", "^RUT"), ("VIX", "^VIX")]
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        idx_futures = {pool.submit(_fetch_ticker_quote, ticker): name for name, ticker in index_map}
+        for f in as_completed(idx_futures):
+            name = idx_futures[f]
+            try:
+                q = f.result(timeout=8)
+                if q and q.get("price"):
+                    indices_data[name] = {"price": round(q["price"], 2), "change_pct": q.get("change_pct", 0)}
+            except Exception:
+                continue
 
     if indices_data:
         sections.append({
-            "title": "Indices Majeurs",
+            "title": "Major Indices",
             "type": "indices",
             "data": indices_data,
         })
 
-    # 2. Sector movers (from screener sectors)
+    # 2. Sector movers — use Yahoo HTTP fetcher (no rate limit)
     sector_moves = {}
     for sector, tickers in list(SCREENER_SECTORS.items())[:6]:
         sector_changes = []
-        for tk in tickers[:5]:
-            try:
-                t = yf.Ticker(tk)
-                h = t.history(period="2d")
-                if len(h) >= 2:
-                    change = ((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100
-                    sector_changes.append({"ticker": tk, "change": round(change, 2)})
-            except Exception:
-                continue
+        with ThreadPoolExecutor(max_workers=5) as p:
+            sec_futures = {p.submit(_fetch_ticker_quote, tk): tk for tk in tickers[:5]}
+            for f in as_completed(sec_futures):
+                try:
+                    q = f.result(timeout=8)
+                    if q and q.get("change_pct") is not None:
+                        sector_changes.append({"ticker": sec_futures[f], "change": q["change_pct"]})
+                except Exception:
+                    continue
         if sector_changes:
             avg = round(sum(s["change"] for s in sector_changes) / len(sector_changes), 2)
             best = max(sector_changes, key=lambda x: x["change"])
             worst = min(sector_changes, key=lambda x: x["change"])
-            sector_moves[sector] = {
-                "avg_change": avg,
-                "best": best,
-                "worst": worst,
-            }
+            sector_moves[sector] = {"avg_change": avg, "best": best, "worst": worst}
 
     if sector_moves:
         sections.append({
-            "title": "Performance Sectorielle",
+            "title": "Sector Performance",
             "type": "sectors",
             "data": dict(sorted(sector_moves.items(), key=lambda x: x[1]["avg_change"], reverse=True)),
         })
 
-    # 3. Top movers in universe
+    # 3. Top movers in universe — use Yahoo HTTP
     all_movers = []
     scan_tickers = list(set(tk for tl in SCREENER_SECTORS.values() for tk in tl))[:60]
-    def _get_change(tk):
-        try:
-            t = yf.Ticker(tk)
-            h = t.history(period="2d")
-            if len(h) >= 2:
-                price = round(float(h["Close"].iloc[-1]), 2)
-                change = round(((float(h["Close"].iloc[-1]) - float(h["Close"].iloc[-2])) / float(h["Close"].iloc[-2])) * 100, 2)
-                return {"ticker": tk, "price": price, "change_pct": change}
-        except Exception:
-            pass
-        return None
-
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(_get_change, tk) for tk in scan_tickers]
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        futures = {executor.submit(_fetch_ticker_quote, tk): tk for tk in scan_tickers}
         for f in as_completed(futures):
             try:
-                r = f.result(timeout=10)
-                if r:
-                    all_movers.append(r)
+                q = f.result(timeout=8)
+                if q and q.get("price") and q.get("change_pct") is not None:
+                    all_movers.append({
+                        "ticker": q["ticker"],
+                        "price": round(q["price"], 2),
+                        "change_pct": q["change_pct"],
+                    })
             except Exception:
                 pass
 
@@ -5131,7 +5119,7 @@ def daily_briefing():
         today_events = [e for e in cal.get("events", []) if e["date"] == today.strftime("%Y-%m-%d")]
         if today_events:
             sections.append({
-                "title": "Événements du Jour",
+                "title": "Today's Events",
                 "type": "events",
                 "data": today_events,
             })
@@ -5139,15 +5127,15 @@ def daily_briefing():
         pass
 
     # Generate AI summary
-    summary_parts = [f"Briefing marché du {today.strftime('%d/%m/%Y')}."]
+    summary_parts = [f"Market briefing for {today.strftime('%A, %B %d, %Y')}."]
 
     if indices_data:
         sp = indices_data.get("S&P 500", {})
         nq = indices_data.get("Nasdaq", {})
         vix_d = indices_data.get("VIX", {})
         if sp:
-            direction = "hausse" if sp.get("change_pct", 0) > 0 else "baisse"
-            summary_parts.append(f"S&P 500 en {direction} de {abs(sp.get('change_pct', 0))}%.")
+            direction = "up" if sp.get("change_pct", 0) > 0 else "down"
+            summary_parts.append(f"S&P 500 {direction} {abs(sp.get('change_pct', 0))}%.")
         if vix_d:
             if vix_d.get("price", 15) > 25:
                 summary_parts.append(f"VIX elevated at {vix_d['price']} — heightened volatility, caution advised.")
@@ -5158,14 +5146,14 @@ def daily_briefing():
         best_sector = max(sector_moves.items(), key=lambda x: x[1]["avg_change"])
         worst_sector = min(sector_moves.items(), key=lambda x: x[1]["avg_change"])
         summary_parts.append(
-            f"Meilleur secteur: {best_sector[0]} ({'+' if best_sector[1]['avg_change'] > 0 else ''}{best_sector[1]['avg_change']}%). "
-            f"Pire secteur: {worst_sector[0]} ({'+' if worst_sector[1]['avg_change'] > 0 else ''}{worst_sector[1]['avg_change']}%)."
+            f"Best sector: {best_sector[0]} ({'+' if best_sector[1]['avg_change'] > 0 else ''}{best_sector[1]['avg_change']}%). "
+            f"Worst sector: {worst_sector[0]} ({'+' if worst_sector[1]['avg_change'] > 0 else ''}{worst_sector[1]['avg_change']}%)."
         )
 
     if all_movers:
         summary_parts.append(
-            f"Plus forte hausse: {all_movers[0]['ticker']} (+{all_movers[0]['change_pct']}%). "
-            f"Plus forte baisse: {all_movers[-1]['ticker']} ({all_movers[-1]['change_pct']}%)."
+            f"Top gainer: {all_movers[0]['ticker']} (+{all_movers[0]['change_pct']}%). "
+            f"Top loser: {all_movers[-1]['ticker']} ({all_movers[-1]['change_pct']}%)."
         )
 
     return _sanitize({

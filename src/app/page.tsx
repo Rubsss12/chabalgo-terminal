@@ -63,6 +63,11 @@ const Watchlist = dynamic(() => import("@/components/Watchlist"), { ssr: false }
 const WatchButton = dynamic(() => import("@/components/WatchButton"), { ssr: false });
 const ProChart = dynamic(() => import("@/components/ProChart"), { ssr: false });
 const InvestorTracker = dynamic(() => import("@/components/InvestorTracker"), { ssr: false });
+const CompareChart = dynamic(() => import("@/components/CompareChart"), { ssr: false });
+const MorningBrief = dynamic(() => import("@/components/MorningBrief"), { ssr: false });
+const ThemeToggle = dynamic(() => import("@/components/ThemeToggle"), { ssr: false });
+const AlertsManager = dynamic(() => import("@/components/PriceAlerts"), { ssr: false });
+const AlertWatcher = dynamic(() => import("@/components/PriceAlerts").then((m) => m.AlertWatcher), { ssr: false });
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -268,6 +273,7 @@ export default function Home() {
             <div className="hidden sm:block text-muted text-xs tabular-nums">
               {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
             </div>
+            <ThemeToggle />
             <Rankings onSelectTicker={handleSearch} />
           </div>
         </div>
@@ -344,6 +350,7 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <span className="text-accent text-sm font-bold tracking-wide">{data.ticker}</span>
               <WatchButton ticker={data.ticker} entryPrice={data.price?.price} size="sm" />
+              <AlertsManager ticker={data.ticker} currentPrice={data.price?.price} />
               <button
                 onClick={() => navigator.clipboard?.writeText(window.location.href)}
                 className="w-8 h-8 rounded-lg hover:bg-card border border-transparent hover:border-border flex items-center justify-center text-muted hover:text-accent transition-all"
@@ -604,6 +611,15 @@ export default function Home() {
                     <div className="lg:col-span-3"><SectorHeatmap onSearch={handleSearch} /></div>
                   </div>
                 </div>
+
+                {/* Compare any stocks */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <h3 className="text-sm font-semibold text-foreground">Compare Stocks</h3>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  <CompareChart />
+                </div>
               </div>
             )}
 
@@ -683,6 +699,9 @@ export default function Home() {
           </footer>
         </div>
       )}
+
+      {/* Background alert watcher — invisible, polls every 60s */}
+      <AlertWatcher />
 
       {/* Watchlist floating panel — persistent across all views */}
       <Watchlist onSelectTicker={handleSearch} />

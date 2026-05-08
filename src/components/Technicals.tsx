@@ -2,11 +2,14 @@
 
 import { AnalysisData } from "@/lib/types";
 import { formatPrice, colorForSignal } from "@/lib/format";
+import MetricTooltip from "./MetricTooltip";
 
-function Row({ label, value, color }: { label: string; value: string; color?: string }) {
+function Row({ label, value, color, metric }: { label: string; value: string; color?: string; metric?: string }) {
   return (
     <div className="flex justify-between py-1.5 border-b border-border/50 last:border-0">
-      <span className="text-muted text-sm">{label}</span>
+      <span className="text-muted text-sm">
+        {metric ? <MetricTooltip metric={metric}>{label}</MetricTooltip> : label}
+      </span>
       <span className={`text-sm font-medium ${color || "text-foreground"}`}>{value}</span>
     </div>
   );
@@ -72,16 +75,19 @@ export default function Technicals({ data }: { data: AnalysisData }) {
       <div>
         <Row
           label="MA50"
+          metric="ma50"
           value={t.ma50 != null ? `${formatPrice(t.ma50)} (${t.price_vs_ma50})` : "--"}
           color={colorForSignal(t.price_vs_ma50)}
         />
         <Row
           label="MA200"
+          metric="ma200"
           value={t.ma200 != null ? `${formatPrice(t.ma200)} (${t.price_vs_ma200})` : "--"}
           color={colorForSignal(t.price_vs_ma200)}
         />
         <Row
           label="RSI (14)"
+          metric="rsi"
           value={t.rsi != null ? `${t.rsi.toFixed(1)} (${t.rsi_signal})` : "--"}
           color={colorForSignal(t.rsi_signal)}
         />

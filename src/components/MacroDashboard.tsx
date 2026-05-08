@@ -79,13 +79,8 @@ export default function MacroDashboard() {
     );
   }
 
-  if (error || !data) {
-    return (
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="text-[10px] text-muted/50">{error || "Macro data unavailable"}</div>
-      </div>
-    );
-  }
+  // Hide gracefully when unavailable
+  if (error || !data) return null;
 
   const indicators = data.indicators;
   const yc = data.yield_curve;

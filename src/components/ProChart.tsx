@@ -20,13 +20,15 @@ interface ProChartProps {
   ticker: string;
 }
 
-const CREAM = "#FAF8F5";
 const GREEN = "#2D8B4E";
 const RED = "#C0392B";
 const ACCENT = "#F37021";
 const ACCENT_LIGHT = "rgba(243, 112, 33, 0.15)";
-const MUTED = "rgba(120, 113, 108, 0.4)";
-const FG = "#1A1A1A";
+
+function readVar(name: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
 
 export default function ProChart({ data, ticker }: ProChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,37 +57,55 @@ export default function ProChart({ data, ticker }: ProChartProps) {
     return data.filter((d) => d.date >= cutoffStr);
   })();
 
-  // Initialize chart once
+  // Initialize chart once + re-init on theme change
   useEffect(() => {
     if (!containerRef.current) return;
+    const isDark = document.documentElement.dataset.theme === "dark";
+    const bg = readVar("--background", isDark ? "#0E0F11" : "#FAF8F5");
+    const fg = readVar("--foreground", isDark ? "#F5F4F1" : "#1A1A1A");
+    const grid = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)";
+    const border = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
+
     const chart = createChart(containerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: CREAM },
-        textColor: FG,
+        background: { type: ColorType.Solid, color: bg },
+        textColor: fg,
         fontFamily: "ui-sans-serif, system-ui, -apple-system",
       },
       grid: {
-        vertLines: { color: "rgba(0,0,0,0.04)" },
-        horzLines: { color: "rgba(0,0,0,0.04)" },
+        vertLines: { color: grid },
+        horzLines: { color: grid },
       },
       crosshair: {
         mode: 1,
         vertLine: { color: ACCENT, width: 1, style: 2, labelBackgroundColor: ACCENT },
         horzLine: { color: ACCENT, width: 1, style: 2, labelBackgroundColor: ACCENT },
       },
-      timeScale: {
-        borderColor: "rgba(0,0,0,0.08)",
-        timeVisible: false,
-      },
-      rightPriceScale: {
-        borderColor: "rgba(0,0,0,0.08)",
-      },
+      timeScale: { borderColor: border, timeVisible: false },
+      rightPriceScale: { borderColor: border },
       autoSize: true,
     });
 
     chartRef.current = chart;
 
+    // React to theme changes via MutationObserver on data-theme
+    const obs = new MutationObserver(() => {
+      const newDark = document.documentElement.dataset.theme === "dark";
+      const newBg = readVar("--background", newDark ? "#0E0F11" : "#FAF8F5");
+      const newFg = readVar("--foreground", newDark ? "#F5F4F1" : "#1A1A1A");
+      const newGrid = newDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)";
+      const newBorder = newDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
+      chart.applyOptions({
+        layout: { background: { type: ColorType.Solid, color: newBg }, textColor: newFg },
+        grid: { vertLines: { color: newGrid }, horzLines: { color: newGrid } },
+        timeScale: { borderColor: newBorder },
+        rightPriceScale: { borderColor: newBorder },
+      });
+    });
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
     return () => {
+      obs.disconnect();
       chart.remove();
       chartRef.current = null;
     };

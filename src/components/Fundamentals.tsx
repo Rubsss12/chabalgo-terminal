@@ -2,11 +2,14 @@
 
 import { AnalysisData } from "@/lib/types";
 import { formatPct, formatLargeNumber } from "@/lib/format";
+import MetricTooltip from "./MetricTooltip";
 
-function Row({ label, value, color }: { label: string; value: string; color?: string }) {
+function Row({ label, value, color, metric }: { label: string; value: string; color?: string; metric?: string }) {
   return (
     <div className="flex justify-between py-1.5 border-b border-border/50 last:border-0">
-      <span className="text-muted text-sm">{label}</span>
+      <span className="text-muted text-sm">
+        {metric ? <MetricTooltip metric={metric}>{label}</MetricTooltip> : label}
+      </span>
       <span className={`text-sm font-medium ${color || "text-foreground"}`}>{value}</span>
     </div>
   );
@@ -99,24 +102,26 @@ export default function Fundamentals({ data }: { data: AnalysisData }) {
         <span className="text-muted/40 text-[10px]">[{f.source}]</span>
       </div>
       <div>
-        <Row label="PE Ratio (TTM)" value={f.pe_ratio != null ? f.pe_ratio.toFixed(1) : "--"} />
-        <Row label="Forward PE" value={f.forward_pe != null ? f.forward_pe.toFixed(1) : "--"} />
+        <Row label="PE Ratio (TTM)" metric="pe" value={f.pe_ratio != null ? f.pe_ratio.toFixed(1) : "--"} />
+        <Row label="Forward PE" metric="forward_pe" value={f.forward_pe != null ? f.forward_pe.toFixed(1) : "--"} />
         <Row
           label="Revenue Growth YoY"
+          metric="revenue_growth"
           value={f.revenue_growth_yoy != null ? formatPct(f.revenue_growth_yoy) : "--"}
           color={f.revenue_growth_yoy != null ? (f.revenue_growth_yoy > 0 ? "text-green" : "text-red") : undefined}
         />
-        <Row label="Gross Margin" value={f.gross_margin != null ? `${f.gross_margin.toFixed(1)}%` : "--"} />
-        <Row label="Operating Margin" value={f.operating_margin != null ? `${f.operating_margin.toFixed(1)}%` : "--"} />
-        <Row label="EPS (Last Q)" value={f.eps_last_quarter != null ? f.eps_last_quarter.toFixed(2) : "--"} />
+        <Row label="Gross Margin" metric="gross_margin" value={f.gross_margin != null ? `${f.gross_margin.toFixed(1)}%` : "--"} />
+        <Row label="Operating Margin" metric="operating_margin" value={f.operating_margin != null ? `${f.operating_margin.toFixed(1)}%` : "--"} />
+        <Row label="EPS (Last Q)" metric="eps" value={f.eps_last_quarter != null ? f.eps_last_quarter.toFixed(2) : "--"} />
         {f.eps_estimate != null && (
-          <Row label="EPS Estimate" value={f.eps_estimate.toFixed(2)} />
+          <Row label="EPS Estimate" metric="eps" value={f.eps_estimate.toFixed(2)} />
         )}
         {f.eps_surprise_pct != null && (
           <Row label="EPS Surprise" value={formatPct(f.eps_surprise_pct)} color={surpriseColor} />
         )}
         <Row
           label="Net Debt"
+          metric="net_debt"
           value={f.net_debt != null ? formatLargeNumber(f.net_debt) : "--"}
           color={f.net_debt != null ? (f.net_debt > 0 ? "text-red" : "text-green") : undefined}
         />

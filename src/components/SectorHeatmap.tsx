@@ -48,13 +48,8 @@ export default function SectorHeatmap({ onSearch }: { onSearch?: (ticker: string
     );
   }
 
-  if (!data || Object.keys(data.sectors).length === 0) {
-    return (
-      <div className="bg-card border border-border p-5">
-        <div className="text-muted text-xs">Heatmap unavailable</div>
-      </div>
-    );
-  }
+  // Hide gracefully when unavailable
+  if (!data || Object.keys(data.sectors).length === 0) return null;
 
   const cellColor = (pct: number) => {
     if (pct > 3) return "bg-green/30 text-green";

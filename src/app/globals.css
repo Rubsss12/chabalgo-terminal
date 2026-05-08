@@ -18,6 +18,24 @@
   --surface: #F5F1EC;
 }
 
+[data-theme="dark"] {
+  --background: #0E0F11;
+  --foreground: #F5F4F1;
+  --accent: #F37021;
+  --accent-light: #2A1810;
+  --accent-hover: #FF8534;
+  --red: #E04F3F;
+  --green: #4FBA72;
+  --yellow: #E5B057;
+  --border: #2A2A2D;
+  --border-light: #3A3A3D;
+  --muted: #8B8680;
+  --card: #18191C;
+  --card-hover: #1F2024;
+  --subtle: #1A1B1E;
+  --surface: #15161A;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
