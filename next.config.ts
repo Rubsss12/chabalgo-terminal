@@ -11,12 +11,12 @@ const nextConfig: NextConfig = {
         output: "export" as const,
         basePath: "/chabalgo-terminal",
         assetPrefix: "/chabalgo-terminal/",
+        trailingSlash: true,
       }
     : {}),
   images: {
     unoptimized: true,
   },
-  trailingSlash: true,
 };
 
 export default nextConfig;
