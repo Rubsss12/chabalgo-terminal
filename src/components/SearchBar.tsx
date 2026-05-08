@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "../lib/apiBase";
 const RECENT_KEY = "chabalgo_recent_searches";
 const RECENT_LIMIT = 5;
 

@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { formatLargeNumber } from "@/lib/format";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "../lib/apiBase";
 
 interface ETFData {
   ticker: string;

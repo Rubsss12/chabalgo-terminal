@@ -9,7 +9,7 @@ import {
   type ISeriesApi,
 } from "lightweight-charts";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "../lib/apiBase";
 
 const COLORS = ["#F37021", "#4A90E2", "#9B59B6", "#2D8B4E", "#C0392B"];
 

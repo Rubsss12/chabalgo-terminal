@@ -1,6 +1,6 @@
 import { AnalysisData, PortfolioPnL } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "./apiBase";
 
 export async function fetchAnalysis(ticker: string): Promise<AnalysisData> {
   const res = await fetch(`${API_BASE}/analyze/${encodeURIComponent(ticker)}`);

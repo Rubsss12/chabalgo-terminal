@@ -69,7 +69,7 @@ const ThemeToggle = dynamic(() => import("@/components/ThemeToggle"), { ssr: fal
 const AlertsManager = dynamic(() => import("@/components/PriceAlerts"), { ssr: false });
 const AlertWatcher = dynamic(() => import("@/components/PriceAlerts").then((m) => m.AlertWatcher), { ssr: false });
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "../lib/apiBase";
 
 type LandingTab = "sectors" | "overview" | "crypto" | "screeners" | "invest";
 
