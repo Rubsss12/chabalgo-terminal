@@ -7581,6 +7581,288 @@ def global_markets(exchange_key: str, limit: int = 15):
     return data
 
 
+# ══════════════════════════════════════════════════════════════
+#  BATCH QUOTES — for watchlist live updates
+# ══════════════════════════════════════════════════════════════
+@app.get("/quotes/batch")
+def quotes_batch(symbols: str):
+    """Fetch quotes for multiple tickers in parallel. Used by watchlist."""
+    tickers = [t.strip().upper() for t in symbols.split(",") if t.strip()]
+    if not tickers or len(tickers) > 50:
+        return {"quotes": []}
+
+    quotes = []
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        futures = {pool.submit(_fetch_ticker_quote, t): t for t in tickers}
+        for f in as_completed(futures):
+            try:
+                q = f.result(timeout=8)
+                if q:
+                    quotes.append(q)
+            except Exception:
+                pass
+
+    # Preserve original order
+    order = {t: i for i, t in enumerate(tickers)}
+    quotes.sort(key=lambda x: order.get(x.get("ticker", ""), 999))
+    return {"quotes": quotes}
+
+
+# ══════════════════════════════════════════════════════════════
+#  ETF HOLDINGS — explore what's inside an ETF
+# ══════════════════════════════════════════════════════════════
+_etf_cache: Dict[str, Any] = {}
+_ETF_CACHE_TTL = 3600  # 1h
+
+
+@app.get("/etf/{ticker}/holdings")
+def etf_holdings(ticker: str):
+    """Get ETF holdings via Yahoo's quoteSummary topHoldings module."""
+    cache_key = f"etf_{ticker}"
+    cached = _etf_cache.get(cache_key)
+    if cached and _time.time() - cached["_ts"] < _ETF_CACHE_TTL:
+        return cached["data"]
+
+    try:
+        # Yahoo's holdings endpoint via yfinance (one-shot, no rate limit since it's per-ticker)
+        t = yf.Ticker(ticker)
+        info = t.info or {}
+        holdings = []
+        try:
+            # Some ETFs have funds_data with sector_weightings + top holdings
+            fd = t.funds_data
+            top = fd.top_holdings  # DataFrame
+            if top is not None and not top.empty:
+                for sym, row in top.iterrows():
+                    holdings.append({
+                        "symbol": sym,
+                        "name": row.get("Name") if hasattr(row, "get") else (row["Name"] if "Name" in row else sym),
+                        "weight_pct": round(float(row.get("Holding Percent", 0) if hasattr(row, "get") else row["Holding Percent"]) * 100, 2),
+                    })
+        except Exception:
+            pass
+
+        sector_weights = []
+        try:
+            fd = t.funds_data
+            sw = fd.sector_weightings
+            if sw is not None:
+                for sec, weight in sw.items():
+                    sector_weights.append({"sector": sec, "weight_pct": round(float(weight) * 100, 2)})
+                sector_weights.sort(key=lambda x: -x["weight_pct"])
+        except Exception:
+            pass
+
+        result = _sanitize({
+            "ticker": ticker.upper(),
+            "name": info.get("longName") or info.get("shortName") or ticker.upper(),
+            "category": info.get("category", ""),
+            "expense_ratio": info.get("annualReportExpenseRatio"),
+            "total_assets": info.get("totalAssets"),
+            "ytd_return": info.get("ytdReturn"),
+            "three_year_return": info.get("threeYearAverageReturn"),
+            "five_year_return": info.get("fiveYearAverageReturn"),
+            "holdings": holdings,
+            "sector_weights": sector_weights,
+        })
+        _etf_cache[cache_key] = {"_ts": _time.time(), "data": result}
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"ETF data unavailable for {ticker}: {str(e)[:100]}")
+
+
+# ══════════════════════════════════════════════════════════════
+#  13F FILINGS — what billionaires own
+# ══════════════════════════════════════════════════════════════
+_13f_cache: Dict[str, Any] = {}
+_13F_CACHE_TTL = 86400  # 24h — 13F changes quarterly
+
+# Famous investor CIKs from SEC EDGAR
+FAMOUS_INVESTORS = {
+    "berkshire": {"name": "Berkshire Hathaway (Buffett)", "cik": "0001067983"},
+    "scion": {"name": "Scion Asset Mgmt (Burry)", "cik": "0001649339"},
+    "pershing": {"name": "Pershing Square (Ackman)", "cik": "0001336528"},
+    "duquesne": {"name": "Duquesne Family (Druckenmiller)", "cik": "0001536411"},
+    "appaloosa": {"name": "Appaloosa LP (Tepper)", "cik": "0001656456"},
+    "soros": {"name": "Soros Fund Mgmt", "cik": "0001029160"},
+    "bridgewater": {"name": "Bridgewater (Dalio)", "cik": "0001350694"},
+    "renaissance": {"name": "Renaissance Tech (Simons)", "cik": "0001037389"},
+    "third_point": {"name": "Third Point (Loeb)", "cik": "0001040273"},
+    "icahn": {"name": "Icahn Capital", "cik": "0000921669"},
+    "millennium": {"name": "Millennium Mgmt", "cik": "0001273087"},
+    "citadel": {"name": "Citadel Advisors", "cik": "0001423053"},
+}
+
+
+@app.get("/13f/investors")
+def list_13f_investors():
+    """List famous investors with 13F filings."""
+    return {"investors": [{"key": k, **v} for k, v in FAMOUS_INVESTORS.items()]}
+
+
+@app.get("/13f/{investor_key}")
+def get_13f_holdings(investor_key: str, limit: int = 25):
+    """Get latest 13F holdings for a famous investor."""
+    if investor_key not in FAMOUS_INVESTORS:
+        raise HTTPException(status_code=404, detail=f"Unknown investor: {investor_key}")
+
+    cache_key = f"13f_{investor_key}_{limit}"
+    cached = _13f_cache.get(cache_key)
+    if cached and _time.time() - cached["_ts"] < _13F_CACHE_TTL:
+        return cached["data"]
+
+    cik = FAMOUS_INVESTORS[investor_key]["cik"]
+    name = FAMOUS_INVESTORS[investor_key]["name"]
+
+    try:
+        # 1. Get list of 13F-HR filings
+        r = requests.get(
+            f"https://data.sec.gov/submissions/CIK{cik}.json",
+            headers={"User-Agent": "ChabAlgo Terminal contact@chabalgo.com"},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            raise HTTPException(status_code=502, detail="SEC API unavailable")
+        sub = r.json()
+        recent = sub.get("filings", {}).get("recent", {})
+        forms = recent.get("form", [])
+        accession = recent.get("accessionNumber", [])
+        primary_doc = recent.get("primaryDocument", [])
+        filing_dates = recent.get("filingDate", [])
+        report_dates = recent.get("reportDate", [])
+
+        # Find the latest 13F-HR
+        latest_13f = None
+        for i, form in enumerate(forms):
+            if form == "13F-HR":
+                latest_13f = {
+                    "accession": accession[i],
+                    "primary_doc": primary_doc[i],
+                    "filing_date": filing_dates[i],
+                    "report_date": report_dates[i] if i < len(report_dates) else "",
+                }
+                break
+
+        if not latest_13f:
+            raise HTTPException(status_code=404, detail="No 13F-HR filing found")
+
+        # 2. Fetch the information table XML
+        acc_clean = latest_13f["accession"].replace("-", "")
+        # Try common naming patterns for the XML info table
+        info_url_candidates = []
+        # Standard naming (informationtable.xml)
+        info_url_candidates.append(f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_clean}/informationtable.xml")
+        info_url_candidates.append(f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_clean}/{latest_13f['primary_doc'].replace('.xml', '.xml')}")
+
+        xml_text = None
+        for url in info_url_candidates:
+            try:
+                rr = requests.get(url, headers={"User-Agent": "ChabAlgo Terminal contact@chabalgo.com"}, timeout=10)
+                if rr.status_code == 200 and "<infoTable>" in rr.text:
+                    xml_text = rr.text
+                    break
+            except Exception:
+                continue
+
+        # If still not found, try the filing index page — try ALL xml files except primary_doc
+        if not xml_text:
+            idx_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_clean}/"
+            try:
+                idx_r = requests.get(idx_url, headers={"User-Agent": "ChabAlgo Terminal contact@chabalgo.com"}, timeout=10)
+                if idx_r.status_code == 200:
+                    import re as _re
+                    matches = _re.findall(r'href="([^"]+\.xml)"', idx_r.text)
+                    # Try any XML that's NOT the primary doc / cover page
+                    candidates = [m for m in matches if "primary_doc" not in m.lower() and "primarydoc" not in m.lower()]
+                    # Prefer ones with "info" in the name
+                    candidates.sort(key=lambda m: 0 if ("info" in m.lower()) else 1)
+                    for m in candidates:
+                        full = f"https://www.sec.gov{m}" if m.startswith("/") else f"{idx_url}{m}"
+                        try:
+                            rr = requests.get(full, headers={"User-Agent": "ChabAlgo Terminal contact@chabalgo.com"}, timeout=10)
+                            if rr.status_code == 200 and "<infoTable" in rr.text:
+                                xml_text = rr.text
+                                break
+                        except Exception:
+                            continue
+            except Exception:
+                pass
+
+        if not xml_text:
+            raise HTTPException(status_code=502, detail="13F information table not found")
+
+        # 3. Parse XML
+        from xml.etree import ElementTree as ET
+        ns = {"ns": "http://www.sec.gov/edgar/document/thirteenf/informationtable"}
+        # Some filings have no namespace; try both
+        try:
+            root = ET.fromstring(xml_text)
+        except Exception:
+            raise HTTPException(status_code=502, detail="Failed to parse 13F XML")
+
+        holdings = []
+        # Try with and without namespace
+        info_tables = root.findall(".//{http://www.sec.gov/edgar/document/thirteenf/informationtable}infoTable")
+        if not info_tables:
+            info_tables = root.findall(".//infoTable")
+
+        for it in info_tables:
+            def get_text(elem, tag):
+                el = elem.find(f"{{http://www.sec.gov/edgar/document/thirteenf/informationtable}}{tag}")
+                if el is None:
+                    el = elem.find(tag)
+                return el.text if el is not None else None
+
+            name_of_issuer = get_text(it, "nameOfIssuer") or ""
+            cusip = get_text(it, "cusip") or ""
+            value_str = get_text(it, "value") or "0"
+            shares_str = None
+            shrs = it.find("{http://www.sec.gov/edgar/document/thirteenf/informationtable}shrsOrPrnAmt")
+            if shrs is None:
+                shrs = it.find("shrsOrPrnAmt")
+            if shrs is not None:
+                shares_str = get_text(shrs, "sshPrnamt")
+            try:
+                value = int(value_str)
+            except Exception:
+                value = 0
+            try:
+                shares = int(shares_str) if shares_str else 0
+            except Exception:
+                shares = 0
+            holdings.append({
+                "name": name_of_issuer,
+                "cusip": cusip,
+                "value": value,  # value in thousands of dollars per SEC
+                "shares": shares,
+            })
+
+        # Sort by value descending
+        holdings.sort(key=lambda h: -h["value"])
+        total_value = sum(h["value"] for h in holdings)
+
+        # Add weight_pct
+        for h in holdings:
+            h["weight_pct"] = round((h["value"] / total_value) * 100, 2) if total_value else 0
+
+        result = _sanitize({
+            "investor_key": investor_key,
+            "investor_name": name,
+            "report_date": latest_13f["report_date"],
+            "filing_date": latest_13f["filing_date"],
+            "total_value_usd": total_value,  # 13F values are in raw dollars (post-2023 format)
+            "position_count": len(holdings),
+            "holdings": holdings[:limit],
+        })
+        _13f_cache[cache_key] = {"_ts": _time.time(), "data": result}
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"13F fetch failed: {str(e)[:120]}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -59,6 +59,10 @@ const CryptoMarkets = dynamic(() => import("@/components/CryptoMarkets"), { ssr:
 const CryptoAnalysis = dynamic(() => import("@/components/CryptoAnalysis"), { ssr: false });
 const RedditTracker = dynamic(() => import("@/components/RedditTracker"), { ssr: false });
 const GlobalMarkets = dynamic(() => import("@/components/GlobalMarkets"), { ssr: false });
+const Watchlist = dynamic(() => import("@/components/Watchlist"), { ssr: false });
+const WatchButton = dynamic(() => import("@/components/WatchButton"), { ssr: false });
+const ProChart = dynamic(() => import("@/components/ProChart"), { ssr: false });
+const InvestorTracker = dynamic(() => import("@/components/InvestorTracker"), { ssr: false });
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -112,6 +116,49 @@ export default function Home() {
       })
       .catch(() => {});
   }, []);
+
+  // Read URL params on mount → auto-load stock or crypto
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("t");
+    const c = params.get("c");
+    const tab = params.get("tab") as LandingTab | null;
+    if (t) {
+      handleSearch(t.toUpperCase());
+    } else if (c) {
+      setLandingTab("crypto");
+      setCryptoCoinId(c);
+    } else if (tab && ["sectors", "overview", "crypto", "screeners", "invest"].includes(tab)) {
+      setLandingTab(tab);
+    }
+    // Listen for back/forward
+    const onPop = () => {
+      const p = new URLSearchParams(window.location.search);
+      const tt = p.get("t");
+      const cc = p.get("c");
+      if (tt) handleSearch(tt.toUpperCase());
+      else { setData(null); currentTickerRef.current = null; }
+      if (cc) { setLandingTab("crypto"); setCryptoCoinId(cc); }
+      else setCryptoCoinId(null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync URL when stock/crypto changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams();
+    if (data) params.set("t", data.ticker);
+    else if (cryptoCoinId) params.set("c", cryptoCoinId);
+    else if (landingTab !== "sectors") params.set("tab", landingTab);
+    const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+    if (window.location.search !== `?${params.toString()}` && window.location.pathname + window.location.search !== newUrl) {
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [data, cryptoCoinId, landingTab]);
 
   const silentRefresh = useCallback(async () => {
     const ticker = currentTickerRef.current;
@@ -296,6 +343,16 @@ export default function Home() {
             </button>
             <div className="flex items-center gap-3">
               <span className="text-accent text-sm font-bold tracking-wide">{data.ticker}</span>
+              <WatchButton ticker={data.ticker} entryPrice={data.price?.price} size="sm" />
+              <button
+                onClick={() => navigator.clipboard?.writeText(window.location.href)}
+                className="w-8 h-8 rounded-lg hover:bg-card border border-transparent hover:border-border flex items-center justify-center text-muted hover:text-accent transition-all"
+                title="Copy share link"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </button>
               <button onClick={handleClose} className="w-8 h-8 rounded-lg hover:bg-card flex items-center justify-center text-muted hover:text-red transition-all">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -335,7 +392,7 @@ export default function Home() {
             <Technicals data={data} />
           </div>
           <FinancialStatements ticker={data.ticker} />
-          <Charts data={data.historical} ticker={data.ticker} />
+          <ProChart data={data.historical} ticker={data.ticker} />
 
           {/* ── ACTIVITY ── */}
           <SectionDivider label="INSIDER & EARNINGS ACTIVITY" />
@@ -592,6 +649,7 @@ export default function Home() {
                 </div>
 
                 <RedditTracker onSearch={handleSearch} />
+                <InvestorTracker onSearch={handleSearch} />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <OptionsFlow onSearch={handleSearch} />
                   <InsiderScreener onSearch={handleSearch} />
@@ -625,6 +683,9 @@ export default function Home() {
           </footer>
         </div>
       )}
+
+      {/* Watchlist floating panel — persistent across all views */}
+      <Watchlist onSelectTicker={handleSearch} />
 
       {/* Portfolio sidebar */}
       <Portfolio />
