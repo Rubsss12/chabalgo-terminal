@@ -42,6 +42,58 @@ async def _strip_api_prefix(request, call_next):
     return await call_next(request)
 
 
+# Add Cache-Control headers so Vercel's edge CDN caches slow endpoints.
+# Repeat requests within the TTL are served from CDN — no function invocation,
+# instant response. stale-while-revalidate lets CDN serve stale while refreshing
+# in the background, so users never wait on a refresh.
+_CACHE_RULES = [
+    # (path prefix, edge TTL seconds, stale-while-revalidate seconds)
+    ("/heatmap", 180, 600),
+    ("/daily-briefing", 90, 300),
+    ("/global/markets", 300, 1800),
+    ("/global/exchanges", 3600, 7200),
+    ("/13f/", 3600, 86400),
+    ("/macro/dashboard", 600, 3600),
+    ("/macro/series", 600, 3600),
+    ("/fear-greed-v2", 300, 1800),
+    ("/market-regime", 300, 1800),
+    ("/net-liquidity", 600, 3600),
+    ("/reddit/trending", 600, 1800),
+    ("/etf/", 1800, 7200),
+    ("/crypto/markets", 60, 300),
+    ("/crypto/global", 300, 1800),
+    ("/crypto/trending", 300, 1800),
+    ("/crypto/", 60, 300),
+    ("/sector-deepdive", 600, 3600),
+    ("/sec/", 1800, 7200),
+    ("/dcf/", 1800, 7200),
+    ("/key-metrics", 1800, 7200),
+    ("/ipo", 3600, 86400),
+    ("/economic-calendar", 1800, 7200),
+    ("/quotes/batch", 30, 120),
+    ("/search", 600, 3600),
+    ("/analyze/", 60, 300),
+    ("/vision/", 300, 1800),
+    ("/swot/", 600, 3600),
+    ("/fair-value/", 600, 3600),
+]
+
+
+@app.middleware("http")
+async def _add_cache_headers(request, call_next):
+    response = await call_next(request)
+    if response.status_code != 200:
+        return response
+    path = request.url.path
+    for prefix, ttl, swr in _CACHE_RULES:
+        if path.startswith(prefix):
+            response.headers["Cache-Control"] = (
+                f"public, s-maxage={ttl}, stale-while-revalidate={swr}"
+            )
+            break
+    return response
+
+
 # Health check for debugging deployments
 @app.get("/__health__")
 def _health():
