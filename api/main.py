@@ -813,53 +813,65 @@ def resolve_ticker(query: str) -> Optional[str]:
 
 # --- API Endpoints ---
 
+EXCHANGE_LABELS = {
+    "NMS": "NASDAQ", "NYQ": "NYSE", "ASE": "NYSE-AMEX", "NCM": "NASDAQ", "NGM": "NASDAQ",
+    "PCX": "NYSE-Arca", "BTS": "BATS",
+    "KSC": "KRX (Korea)", "KOE": "KOSDAQ",
+    "TYO": "Tokyo", "JPX": "Tokyo",
+    "HKG": "Hong Kong", "SHH": "Shanghai", "SHZ": "Shenzhen",
+    "NSI": "NSE (India)", "BSE": "BSE (India)",
+    "LSE": "London", "LON": "London",
+    "GER": "XETRA (Germany)", "FRA": "Frankfurt",
+    "PAR": "Paris", "AMS": "Amsterdam", "SWX": "Switzerland",
+    "MIL": "Milan", "MCE": "Madrid", "OSL": "Oslo", "STO": "Stockholm",
+    "ASX": "ASX (Australia)", "TOR": "Toronto", "VAN": "Vancouver",
+    "BUE": "Buenos Aires", "SAO": "São Paulo", "MEX": "Mexico", "JNB": "Johannesburg",
+    "SES": "Singapore", "TAI": "Taiwan", "BKK": "Thailand", "KLS": "Malaysia",
+    "IOB": "International OTC",
+}
+
+
 @app.get("/search")
 def search_ticker(q: str):
-    """Search for tickers by company name or symbol."""
-    query = q.strip().lower()
+    """Global ticker search via Yahoo Finance — supports all major exchanges worldwide."""
+    query = q.strip()
+    if len(query) < 1:
+        return {"results": []}
+    try:
+        r = requests.get(
+            "https://query2.finance.yahoo.com/v1/finance/search",
+            params={"q": query, "quotesCount": 15, "newsCount": 0},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=6,
+        )
+        if r.status_code != 200:
+            return {"results": []}
+        quotes = r.json().get("quotes", [])
+    except Exception:
+        return {"results": []}
+
     results = []
-    seen_symbols = set()
-
-    # Check EU stock map first
-    for name, ticker in EU_STOCK_MAP.items():
-        if query in name or name.startswith(query):
-            if ticker not in seen_symbols:
-                seen_symbols.add(ticker)
-                # Get display name from yfinance
-                try:
-                    t = yf.Ticker(ticker)
-                    desc = t.info.get("shortName", name.title())
-                except Exception:
-                    desc = name.title()
-                results.append({
-                    "symbol": ticker,
-                    "description": desc,
-                    "type": "Common Stock (EU)",
-                })
-            if len(results) >= 3:
-                break
-
-    # Then search Finnhub for US/international
-    data = finnhub_get("search", {"q": q.strip()})
-    if not data or not data.get("result"):
-        return {"results": results[:8]}
-
-    for item in data["result"][:10]:
-        symbol = item.get("symbol", "")
-        # Allow .PA (Paris) and .DE (Germany) tickers, skip other foreign
-        if "." in symbol:
-            suffix = symbol.split(".")[-1]
-            if suffix not in ("PA", "DE", "L", "AS", "MC", "MI", "BR", "HE", "LS", "IR", "CO", "ST", "SW"):
-                continue
-        if symbol in seen_symbols:
+    seen = set()
+    for q_item in quotes:
+        symbol = q_item.get("symbol", "")
+        if not symbol or symbol in seen:
             continue
-        seen_symbols.add(symbol)
+        # Only equities, ETFs, and indices — skip mutual funds, options
+        qt = q_item.get("quoteType", "")
+        if qt not in ("EQUITY", "ETF", "INDEX", "CRYPTOCURRENCY"):
+            continue
+        seen.add(symbol)
+        ex = q_item.get("exchange", "")
         results.append({
             "symbol": symbol,
-            "description": item.get("description", ""),
-            "type": item.get("type", ""),
+            "description": q_item.get("shortname") or q_item.get("longname") or "",
+            "type": qt.title(),
+            "exchange": EXCHANGE_LABELS.get(ex, ex),
         })
-    return {"results": results[:8]}
+        if len(results) >= 10:
+            break
+
+    return {"results": results}
 
 
 def _sanitize(obj):
@@ -7111,6 +7123,202 @@ def reddit_trending(limit: int = 25):
 
     data = _sanitize({"stocks": stocks, "source": "ApeWisdom + Reddit/WSB", "updated": datetime.datetime.now().isoformat()})
     _reddit_cache[cache_key] = {"_ts": _time.time(), "data": data}
+    return data
+
+
+# ══════════════════════════════════════════════════════════════
+#  GLOBAL MARKETS — Top stocks by exchange
+# ══════════════════════════════════════════════════════════════
+_global_cache: Dict[str, Any] = {}
+_GLOBAL_CACHE_TTL = 300  # 5 min
+
+# Curated lists of largest stocks per major exchange
+GLOBAL_EXCHANGES = {
+    "korea": {
+        "name": "Korea (KOSPI/KOSDAQ)",
+        "flag": "🇰🇷",
+        "currency": "KRW",
+        "index": "^KS11",
+        "tickers": ["005930.KS", "000660.KS", "207940.KS", "035420.KS", "005380.KS", "006400.KS", "035720.KS", "068270.KS", "005490.KS", "051910.KS", "028260.KS", "012330.KS", "086790.KS", "066570.KS", "323410.KS"],
+    },
+    "japan": {
+        "name": "Japan (Nikkei)",
+        "flag": "🇯🇵",
+        "currency": "JPY",
+        "index": "^N225",
+        "tickers": ["7203.T", "6758.T", "6861.T", "9984.T", "8035.T", "8306.T", "6098.T", "9433.T", "4063.T", "7974.T", "6501.T", "8316.T", "9432.T", "6594.T", "6902.T"],
+    },
+    "hongkong": {
+        "name": "Hong Kong",
+        "flag": "🇭🇰",
+        "currency": "HKD",
+        "index": "^HSI",
+        "tickers": ["0700.HK", "9988.HK", "1299.HK", "0939.HK", "1398.HK", "3690.HK", "0941.HK", "0005.HK", "2318.HK", "0388.HK", "1810.HK", "9618.HK", "2628.HK", "0883.HK", "1024.HK"],
+    },
+    "china": {
+        "name": "China (Shanghai/Shenzhen)",
+        "flag": "🇨🇳",
+        "currency": "CNY",
+        "index": "000001.SS",
+        "tickers": ["600519.SS", "601398.SS", "601857.SS", "600036.SS", "601318.SS", "601628.SS", "600028.SS", "601988.SS", "000858.SZ", "300750.SZ", "000333.SZ", "002594.SZ", "601166.SS", "601288.SS", "600276.SS"],
+    },
+    "uk": {
+        "name": "UK (FTSE 100)",
+        "flag": "🇬🇧",
+        "currency": "GBP",
+        "index": "^FTSE",
+        "tickers": ["AZN.L", "SHEL.L", "HSBA.L", "ULVR.L", "BP.L", "RIO.L", "GSK.L", "DGE.L", "BATS.L", "REL.L", "NG.L", "GLEN.L", "VOD.L", "BARC.L", "LLOY.L"],
+    },
+    "germany": {
+        "name": "Germany (DAX)",
+        "flag": "🇩🇪",
+        "currency": "EUR",
+        "index": "^GDAXI",
+        "tickers": ["SAP.DE", "SIE.DE", "DTE.DE", "ALV.DE", "MUV2.DE", "MBG.DE", "BAS.DE", "BMW.DE", "VOW3.DE", "ADS.DE", "DBK.DE", "IFX.DE", "RWE.DE", "DHL.DE", "AIR.DE"],
+    },
+    "france": {
+        "name": "France (CAC 40)",
+        "flag": "🇫🇷",
+        "currency": "EUR",
+        "index": "^FCHI",
+        "tickers": ["MC.PA", "OR.PA", "RMS.PA", "TTE.PA", "SAN.PA", "BNP.PA", "AIR.PA", "AI.PA", "SU.PA", "CS.PA", "EL.PA", "BN.PA", "CAP.PA", "ENGI.PA", "VIE.PA"],
+    },
+    "india": {
+        "name": "India (NSE)",
+        "flag": "🇮🇳",
+        "currency": "INR",
+        "index": "^NSEI",
+        "tickers": ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS", "BHARTIARTL.NS", "SBIN.NS", "LT.NS", "HINDUNILVR.NS", "ITC.NS", "BAJFINANCE.NS", "KOTAKBANK.NS", "AXISBANK.NS", "MARUTI.NS", "ASIANPAINT.NS"],
+    },
+    "australia": {
+        "name": "Australia (ASX)",
+        "flag": "🇦🇺",
+        "currency": "AUD",
+        "index": "^AXJO",
+        "tickers": ["BHP.AX", "CBA.AX", "CSL.AX", "NAB.AX", "WBC.AX", "ANZ.AX", "MQG.AX", "WES.AX", "WOW.AX", "TLS.AX", "FMG.AX", "RIO.AX", "GMG.AX", "TCL.AX", "ALL.AX"],
+    },
+    "canada": {
+        "name": "Canada (TSX)",
+        "flag": "🇨🇦",
+        "currency": "CAD",
+        "index": "^GSPTSE",
+        "tickers": ["RY.TO", "TD.TO", "ENB.TO", "BNS.TO", "BMO.TO", "CNR.TO", "CP.TO", "BCE.TO", "CM.TO", "TRP.TO", "SU.TO", "MFC.TO", "CNQ.TO", "ABX.TO", "T.TO"],
+    },
+    "brazil": {
+        "name": "Brazil (B3)",
+        "flag": "🇧🇷",
+        "currency": "BRL",
+        "index": "^BVSP",
+        "tickers": ["VALE3.SA", "PETR4.SA", "ITUB4.SA", "BBDC4.SA", "ABEV3.SA", "BBAS3.SA", "WEGE3.SA", "B3SA3.SA", "RENT3.SA", "PETR3.SA", "ITSA4.SA", "MGLU3.SA", "SUZB3.SA", "JBSS3.SA", "RAIL3.SA"],
+    },
+    "taiwan": {
+        "name": "Taiwan",
+        "flag": "🇹🇼",
+        "currency": "TWD",
+        "index": "^TWII",
+        "tickers": ["2330.TW", "2317.TW", "2454.TW", "2308.TW", "2412.TW", "2882.TW", "2881.TW", "1303.TW", "1301.TW", "2002.TW", "3008.TW", "2891.TW", "2886.TW", "3711.TW", "2207.TW"],
+    },
+}
+
+
+def _fetch_ticker_quote(ticker: str) -> Optional[dict]:
+    """Fast quote fetch via Yahoo v8 chart endpoint — one HTTP call, no auth needed."""
+    try:
+        r = requests.get(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
+            params={"range": "2d", "interval": "1d"},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=5,
+        )
+        if r.status_code != 200:
+            return None
+        result = r.json().get("chart", {}).get("result")
+        if not result:
+            return None
+        meta = result[0].get("meta", {})
+        price = meta.get("regularMarketPrice")
+        prev = meta.get("chartPreviousClose") or meta.get("previousClose")
+        if not price:
+            return None
+        change_pct = ((price - prev) / prev) * 100 if prev else 0
+        # Volume from indicators if available
+        vol = None
+        ind = result[0].get("indicators", {}).get("quote", [{}])[0]
+        if ind.get("volume"):
+            volumes = [v for v in ind["volume"] if v is not None]
+            if volumes:
+                vol = volumes[-1]
+        return {
+            "ticker": ticker,
+            "name": meta.get("shortName") or meta.get("longName") or ticker,
+            "price": float(price),
+            "change_pct": round(change_pct, 2),
+            "market_cap": meta.get("marketCap"),
+            "volume": vol,
+            "currency": meta.get("currency"),
+        }
+    except Exception:
+        return None
+
+
+@app.get("/global/exchanges")
+def global_exchanges():
+    """List all available global exchanges with metadata."""
+    return {"exchanges": [
+        {"key": k, **{kk: vv for kk, vv in v.items() if kk != "tickers"}, "ticker_count": len(v["tickers"])}
+        for k, v in GLOBAL_EXCHANGES.items()
+    ]}
+
+
+@app.get("/global/markets/{exchange_key}")
+def global_markets(exchange_key: str, limit: int = 15):
+    """Get top stocks for a given exchange (korea, japan, hongkong, china, uk, germany, france, india, australia, canada, brazil, taiwan)."""
+    if exchange_key not in GLOBAL_EXCHANGES:
+        raise HTTPException(status_code=404, detail=f"Unknown exchange '{exchange_key}'. Available: {list(GLOBAL_EXCHANGES.keys())}")
+
+    cache_key = f"global_{exchange_key}_{limit}"
+    cached = _global_cache.get(cache_key)
+    if cached and _time.time() - cached["_ts"] < _GLOBAL_CACHE_TTL:
+        return cached["data"]
+
+    config = GLOBAL_EXCHANGES[exchange_key]
+    tickers = config["tickers"][:limit]
+
+    # Fetch index quote
+    index_data = None
+    try:
+        idx_q = _fetch_ticker_quote(config["index"])
+        if idx_q:
+            index_data = {"symbol": config["index"], "price": idx_q["price"], "change_pct": idx_q["change_pct"]}
+    except Exception:
+        pass
+
+    # Fetch all tickers in parallel
+    stocks = []
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {pool.submit(_fetch_ticker_quote, t): t for t in tickers}
+        for f in as_completed(futures):
+            try:
+                q = f.result(timeout=10)
+                if q:
+                    stocks.append(q)
+            except Exception:
+                pass
+
+    # Sort by market cap (desc), then by ticker order in config
+    order_idx = {t: i for i, t in enumerate(tickers)}
+    stocks.sort(key=lambda s: order_idx.get(s["ticker"], 999))
+
+    data = _sanitize({
+        "exchange": exchange_key,
+        "name": config["name"],
+        "flag": config["flag"],
+        "currency": config["currency"],
+        "index": index_data,
+        "stocks": stocks,
+        "updated": datetime.datetime.now().isoformat(),
+    })
+    _global_cache[cache_key] = {"_ts": _time.time(), "data": data}
     return data
 
 

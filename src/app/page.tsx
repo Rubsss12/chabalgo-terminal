@@ -58,6 +58,7 @@ const DCFValuation = dynamic(() => import("@/components/DCFValuation"), { ssr: f
 const CryptoMarkets = dynamic(() => import("@/components/CryptoMarkets"), { ssr: false });
 const CryptoAnalysis = dynamic(() => import("@/components/CryptoAnalysis"), { ssr: false });
 const RedditTracker = dynamic(() => import("@/components/RedditTracker"), { ssr: false });
+const GlobalMarkets = dynamic(() => import("@/components/GlobalMarkets"), { ssr: false });
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -565,6 +566,7 @@ export default function Home() {
                   <div className="lg:col-span-2"><FearGreedIndex /></div>
                   <div className="lg:col-span-3"><SectorHeatmap onSearch={handleSearch} /></div>
                 </div>
+                <GlobalMarkets onSearch={handleSearch} />
                 <EconomicCalendar />
               </div>
             )}

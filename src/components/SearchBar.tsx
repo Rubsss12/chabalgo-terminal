@@ -8,6 +8,7 @@ interface SearchResult {
   symbol: string;
   description: string;
   type: string;
+  exchange?: string;
 }
 
 interface SearchBarProps {
@@ -137,9 +138,10 @@ export default function SearchBar({ onSearch, loading }: SearchBarProps) {
               onClick={() => submitTicker(item.symbol)}
               onMouseEnter={() => setSelectedIdx(i)}
             >
-              <span className="text-accent font-bold min-w-[56px] font-mono text-xs">{item.symbol}</span>
-              <span className="text-muted truncate text-xs">{item.description}</span>
-              <span className="text-muted/30 ml-auto text-[10px] font-medium">{item.type}</span>
+              <span className="text-accent font-bold min-w-[80px] font-mono text-xs">{item.symbol}</span>
+              <span className="text-muted truncate text-xs flex-1">{item.description}</span>
+              {item.exchange && <span className="text-muted/40 text-[10px] font-medium whitespace-nowrap">{item.exchange}</span>}
+              <span className="text-muted/30 text-[10px] font-medium whitespace-nowrap">{item.type}</span>
             </button>
           ))}
         </div>
