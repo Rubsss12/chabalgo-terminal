@@ -2107,7 +2107,7 @@ def six_month_vision(ticker: str):
         val_detail["note"] = "Pour les entreprises pre-profit dans des secteurs à catalyseur (SpaceX IPO, expansion IA), la valorisation se justifie par le momentum sectoriel plutôt que par les multiples traditionnels"
     elif pe is None:
         val_score = 40
-        val_detail["assessment"] = "Pas de PE — entreprise non-profitable, valorisation spéculative"
+        val_detail["assessment"] = "No PE — unprofitable business, speculative valuation"
 
     factors.append({
         "name": "Risque/Rendement Valorisation",
@@ -2126,53 +2126,53 @@ def six_month_vision(ticker: str):
     if composite >= 75:
         verdict_label = "STRONG CONVICTION"
         verdict_color = "green"
-        outlook = "Le momentum, les catalyseurs sectoriels et la trajectoire de croissance convergent positivement. Les 6 prochains mois offrent un potentiel de hausse significatif."
+        outlook = "Momentum, sector catalysts, and growth trajectory all align positively. The next 6 months offer significant upside potential."
     elif composite >= 62:
         verdict_label = "FAVORABLE"
         verdict_color = "green"
-        outlook = "Les conditions sont globalement positives avec des catalyseurs identifiés. Le risque/rendement penche en faveur de l'investisseur sur un horizon 6 mois."
+        outlook = "Conditions are broadly positive with identified catalysts. The risk/reward profile leans in the investor's favor on a 6-month horizon."
     elif composite >= 50:
-        verdict_label = "NEUTRE / ATTENDRE"
+        verdict_label = "NEUTRAL / WAIT"
         verdict_color = "yellow"
-        outlook = "Signaux mixtes. Des catalyseurs existent mais le timing ou la valorisation ne sont pas optimaux. Un pullback pourrait offrir un meilleur point d'entrée."
+        outlook = "Mixed signals. Catalysts exist but timing or valuation aren't optimal. A pullback could offer a better entry point."
     elif composite >= 38:
-        verdict_label = "PRUDENCE"
+        verdict_label = "CAUTION"
         verdict_color = "yellow"
-        outlook = "Plus de risques que d'opportunités à court-moyen terme. Les catalyseurs sont insuffisants pour compenser les faiblesses fondamentales ou techniques."
+        outlook = "More risks than opportunities in the short-to-medium term. Catalysts are insufficient to offset fundamental or technical weaknesses."
     else:
-        verdict_label = "ÉVITER"
+        verdict_label = "AVOID"
         verdict_color = "red"
-        outlook = "Les conditions sont défavorables sur un horizon 6 mois. Momentum négatif, pas de catalyseurs clairs, et/ou valorisation non justifiée."
+        outlook = "Conditions are unfavorable on a 6-month horizon. Negative momentum, no clear catalysts, and/or unjustified valuation."
 
     # Build entry analysis
     entry_analysis = ""
     if momentum_detail.get("return_3m", 0) > 50:
-        entry_analysis = f"Le stock a déjà pris +{momentum_detail['return_3m']}% en 3 mois — l'entrée est plus coûteuse qu'il y a un trimestre. Cependant, "
+        entry_analysis = f"The stock has already gained +{momentum_detail['return_3m']}% over 3 months — entry is more expensive than a quarter ago. However, "
     elif momentum_detail.get("return_3m", 0) > 20:
-        entry_analysis = f"Hausse de +{momentum_detail['return_3m']}% sur 3 mois — le momentum est établi. "
+        entry_analysis = f"Up +{momentum_detail['return_3m']}% over 3 months — momentum is established. "
 
     if catalysts:
         high_catalysts = [c for c in catalysts if c["impact"] in ("very_high", "high")]
         if high_catalysts:
-            entry_analysis += f"Les catalyseurs majeurs à venir ({', '.join(c['event'] for c in high_catalysts[:2])}) peuvent amplifier le mouvement. "
+            entry_analysis += f"Major upcoming catalysts ({', '.join(c['event'] for c in high_catalysts[:2])}) could amplify the move. "
             if momentum_detail.get("return_3m", 0) > 30:
-                entry_analysis += "Même si l'entrée est plus chère qu'il y a quelques mois, le potentiel haussier lié aux catalyseurs sectoriels peut encore doubler la mise. Un investisseur avec un horizon de 6-12 mois et une tolérance au risque élevée peut considérer une position, idéalement en scaling progressif plutôt qu'en all-in."
+                entry_analysis += "Even if entry is pricier than a few months ago, sector catalysts could still double down on the upside. Investors with a 6-12 month horizon and high risk tolerance may consider a position, ideally scaling in progressively rather than going all-in."
             else:
-                entry_analysis += "Le positionnement avant ces événements offre un avantage asymétrique — le downside est limité par le momentum sectoriel tandis que l'upside est amplifié par l'effet catalyseur."
+                entry_analysis += "Positioning ahead of these events offers an asymmetric edge — downside is limited by sector momentum while upside is amplified by the catalyst effect."
 
     if not entry_analysis:
         if composite >= 62:
-            entry_analysis = "Les conditions sont favorables pour initier une position sur cet horizon. Privilégiez un scaling progressif pour optimiser votre prix moyen d'entrée."
+            entry_analysis = "Conditions are favorable to initiate a position on this horizon. Favor progressive scaling to optimize your average entry price."
         elif composite >= 50:
-            entry_analysis = "L'entrée est possible mais pas urgente. Attendez un pullback technique vers les supports (MA50 ou -10% des niveaux actuels) pour un meilleur point d'entrée."
+            entry_analysis = "Entry is possible but not urgent. Wait for a technical pullback toward supports (MA50 or -10% from current levels) for a better entry point."
         else:
-            entry_analysis = "Les conditions ne sont pas optimales pour une entrée. Attendez une amélioration du momentum ou un catalyseur clair avant de vous positionner."
+            entry_analysis = "Conditions are not optimal for entry. Wait for momentum improvement or a clear catalyst before positioning."
 
     return _sanitize({
         "ticker": ticker,
         "name": profile_data.get("name", ticker),
-        "sector": stock_sector or "Non classifié",
-        "horizon": "6 mois",
+        "sector": stock_sector or "Unclassified",
+        "horizon": "6 months",
         "composite_score": round(composite, 1),
         "verdict": verdict_label,
         "verdict_color": verdict_color,
@@ -3960,7 +3960,7 @@ def _get_options_flow(ticker: str) -> dict:
 
 
 def _generate_options_ai_summary(data: dict) -> str:
-    """Generate a French AI summary of options flow."""
+    """Generate an AI summary of options flow."""
     ticker = data.get("ticker", "")
     pcr = data.get("put_call_ratio", 0)
     n_unusual_calls = len(data.get("unusual_calls", []))
@@ -3973,53 +3973,53 @@ def _generate_options_ai_summary(data: dict) -> str:
     # Put/Call ratio analysis
     if pcr > 1.5:
         parts.append(
-            f"Le ratio put/call de {pcr} pour {ticker} indique un sentiment tres bearish sur le marche des options. "
-            f"Les traders d'options positionnent massivement des protections a la baisse, ce qui peut signaler "
-            f"soit une anticipation de mauvaises nouvelles, soit une couverture institutionnelle importante."
+            f"The put/call ratio of {pcr} for {ticker} signals strongly bearish options sentiment. "
+            f"Traders are heavily positioning downside protection — this can mean either "
+            f"anticipation of bad news, or significant institutional hedging."
         )
     elif pcr > 1.0:
         parts.append(
-            f"Le ratio put/call de {pcr} pour {ticker} montre une legere dominance des puts, "
-            f"suggerant une prudence accrue des participants du marche. Ce niveau est souvent associe "
-            f"a une phase de consolidation ou d'incertitude."
+            f"The put/call ratio of {pcr} for {ticker} shows mild put dominance, "
+            f"suggesting heightened caution among market participants. This level is often associated "
+            f"with consolidation or uncertainty phases."
         )
     elif pcr > 0.5:
         parts.append(
-            f"Le ratio put/call de {pcr} pour {ticker} est dans une zone neutre-haussiere. "
-            f"L'equilibre relatif entre calls et puts indique un marche sans conviction extreme, "
-            f"typique d'une phase d'accumulation ou d'attente de catalyseur."
+            f"The put/call ratio of {pcr} for {ticker} is in a neutral-bullish zone. "
+            f"The relative balance between calls and puts indicates a market without strong conviction — "
+            f"typical of accumulation or waiting-for-catalyst phases."
         )
     else:
         parts.append(
-            f"Le ratio put/call de {pcr} pour {ticker} est resolument bullish. "
-            f"La forte dominance des calls ({total_cv:,} volume calls vs {total_pv:,} puts) "
-            f"indique un positionnement agressif a la hausse de la part des traders d'options."
+            f"The put/call ratio of {pcr} for {ticker} is decisively bullish. "
+            f"Heavy call dominance ({total_cv:,} call volume vs {total_pv:,} puts) "
+            f"indicates aggressive upside positioning from options traders."
         )
 
     # Unusual activity analysis
     total_unusual = n_unusual_calls + n_unusual_puts
     if total_unusual > 10:
         parts.append(
-            f"Activite inhabituelle significative detectee: {n_unusual_calls} calls et {n_unusual_puts} puts "
-            f"avec un volume depassant 2x l'open interest. Ce niveau d'activite anormale suggere "
-            f"un flux d'ordres institutionnel ou une anticipation d'un evenement majeur (earnings, FDA, M&A). "
-            f"Les smart money flows de cette ampleur meritent une attention particuliere."
+            f"Significant unusual activity detected: {n_unusual_calls} calls and {n_unusual_puts} puts "
+            f"with volume exceeding 2x open interest. This level of abnormal activity suggests "
+            f"institutional order flow or anticipation of a major event (earnings, FDA, M&A). "
+            f"Smart-money flows of this magnitude deserve particular attention."
         )
     elif total_unusual > 3:
         parts.append(
-            f"Activite inhabituelle moderee: {n_unusual_calls} calls et {n_unusual_puts} puts "
-            f"avec un ratio volume/OI eleve. Ces contrats specifiques pourraient representer "
-            f"des paris directionnels informes ou des strategies de couverture sectorielle."
+            f"Moderate unusual activity: {n_unusual_calls} calls and {n_unusual_puts} puts "
+            f"with elevated volume/OI ratio. These specific contracts could represent "
+            f"informed directional bets or sector-hedging strategies."
         )
     elif total_unusual > 0:
         parts.append(
-            f"Quelques contrats montrent une activite inhabituelle ({total_unusual} au total). "
-            f"A ce niveau, il peut s'agir de flux opportunistes ponctuels plutot que d'un signal directionnel fort."
+            f"A few contracts show unusual activity ({total_unusual} total). "
+            f"At this level, it could be one-off opportunistic flows rather than a strong directional signal."
         )
     else:
         parts.append(
-            f"Aucune activite options particulierement inhabituelle detectee pour {ticker}. "
-            f"Le flux d'ordres semble normal et en ligne avec les volumes historiques."
+            f"No particularly unusual options activity detected for {ticker}. "
+            f"Order flow appears normal and in line with historical volumes."
         )
 
     # Top contract highlights
@@ -4027,11 +4027,11 @@ def _generate_options_ai_summary(data: dict) -> str:
     if top:
         biggest = top[0]
         parts.append(
-            f"Le contrat le plus actif est le {biggest['type']} strike ${biggest['strike']} "
-            f"exp. {biggest['expiry']} avec {biggest['volume']:,} contrats echanges "
-            f"(~${biggest.get('premium', 0):,.0f} en prime). "
-            f"Surveillez les niveaux de strike concentres pour identifier les zones de support/resistance "
-            f"implicites definies par le marche des options."
+            f"The most active contract is the {biggest['type']} strike ${biggest['strike']} "
+            f"exp. {biggest['expiry']} with {biggest['volume']:,} contracts traded "
+            f"(~${biggest.get('premium', 0):,.0f} in premium). "
+            f"Watch concentrated strike levels to identify implied support/resistance zones "
+            f"defined by the options market."
         )
 
     return " ".join(parts)
@@ -4355,7 +4355,7 @@ def economic_calendar(days: int = 14):
 
     if high_events:
         summary_parts.append(
-            f"{high_impact_count} événement{'s' if high_impact_count > 1 else ''} à fort impact dans les {days} prochains jours."
+            f"{high_impact_count} high-impact event{'s' if high_impact_count > 1 else ''} in the next {days} days."
         )
         # Check for specific events
         has_fomc = any("fomc" in e["event"].lower() for e in high_events)
@@ -4364,24 +4364,24 @@ def economic_calendar(days: int = 14):
 
         if has_fomc:
             summary_parts.append(
-                "Réunion FOMC à venir — les marchés seront en mode 'wait and see' jusqu'à la décision. "
-                "Attendez-vous à une volatilité accrue sur les taux, le dollar et les indices."
+                "FOMC meeting ahead — markets will be in 'wait and see' mode until the decision. "
+                "Expect heightened volatility on rates, the dollar, and indices."
             )
         if has_cpi:
             summary_parts.append(
-                "Publication CPI imminente — c'est le chiffre le plus surveillé par la Fed. "
-                "Un CPI supérieur aux attentes renforcerait le dollar et pèserait sur les actions growth. "
-                "Un CPI inférieur aux attentes alimenterait les espoirs de baisse de taux."
+                "CPI release imminent — it's the most closely-watched number by the Fed. "
+                "A hotter-than-expected CPI would strengthen the dollar and weigh on growth stocks. "
+                "A cooler-than-expected CPI would fuel rate-cut hopes."
             )
         if has_nfp:
             summary_parts.append(
-                "Non-Farm Payrolls à surveiller — un marché du travail solide soutient la consommation "
-                "mais réduit les chances de baisse de taux. Un chiffre faible pourrait créer un rallye obligataire."
+                "Non-Farm Payrolls to watch — a strong labor market supports consumption "
+                "but reduces the odds of rate cuts. A weak number could trigger a bond rally."
             )
     else:
         summary_parts.append(
-            "Semaine relativement calme côté macro. Pas d'événements majeurs attendus, "
-            "ce qui laisse le champ libre aux catalyseurs micro (earnings, M&A, guidance)."
+            "Relatively quiet week on the macro side. No major events expected, "
+            "which leaves the door open to micro catalysts (earnings, M&A, guidance)."
         )
 
     # Today highlights
@@ -4499,7 +4499,7 @@ def fear_greed_index():
                 "label": "VIX (Volatilité)",
                 "signal": "extreme_fear" if vix_val > 30 else "fear" if vix_val > 20 else "neutral" if vix_val > 15 else "greed" if vix_val > 12 else "extreme_greed",
                 "score": max(0, min(100, 100 - (vix_val - 10) * 2.5)),
-                "description": f"VIX à {round(vix_val, 1)} — {'volatilité extrême, panique sur les marchés' if vix_val > 30 else 'volatilité élevée, prudence' if vix_val > 20 else 'volatilité normale' if vix_val > 15 else 'faible volatilité, complaisance des marchés'}",
+                "description": f"VIX at {round(vix_val, 1)} — {'extreme volatility, market panic' if vix_val > 30 else 'elevated volatility, caution' if vix_val > 20 else 'normal volatility' if vix_val > 15 else 'low volatility, market complacency'}",
             }
     except Exception:
         pass
@@ -4566,7 +4566,7 @@ def fear_greed_index():
                 "label": "Safe Haven (SPY vs Gold 1M)",
                 "signal": "extreme_greed" if diff > 5 else "greed" if diff > 2 else "neutral" if diff > -2 else "fear" if diff > -5 else "extreme_fear",
                 "score": max(0, min(100, 50 + diff * 8)),
-                "description": f"Actions {'surperforment' if diff > 0 else 'sous-performent'} l'or de {abs(round(diff, 1))}% sur 1 mois — {'risk-on, appétit pour le risque' if diff > 3 else 'légère préférence pour le risque' if diff > 0 else 'fuite vers les valeurs refuges' if diff > -3 else 'panique, forte demande de safe haven'}",
+                "description": f"Stocks {'outperform' if diff > 0 else 'underperform'} gold by {abs(round(diff, 1))}% over 1 month — {'risk-on, strong appetite for risk' if diff > 3 else 'slight preference for risk' if diff > 0 else 'flight to safe havens' if diff > -3 else 'panic, strong demand for safe-haven assets'}",
             }
     except Exception:
         pass
@@ -4591,7 +4591,7 @@ def fear_greed_index():
                     "label": f"Put/Call Ratio SPY ({pcr})",
                     "signal": "extreme_fear" if pcr > 1.5 else "fear" if pcr > 1.0 else "neutral" if pcr > 0.7 else "greed" if pcr > 0.5 else "extreme_greed",
                     "score": max(0, min(100, 100 - (pcr - 0.5) * 80)),
-                    "description": f"Put/Call ratio SPY de {pcr} — {'panique, les traders achètent massivement des protections' if pcr > 1.5 else 'sentiment prudent, demande élevée de puts' if pcr > 1.0 else 'ratio équilibré' if pcr > 0.7 else 'optimisme dominant, peu de couverture' if pcr > 0.5 else 'euphorie extrême, aucune protection'}",
+                    "description": f"SPY put/call ratio of {pcr} — {'panic, traders heavily buying protection' if pcr > 1.5 else 'cautious sentiment, high put demand' if pcr > 1.0 else 'balanced ratio' if pcr > 0.7 else 'optimism dominant, little hedging' if pcr > 0.5 else 'extreme euphoria, no protection'}",
                 }
     except Exception:
         pass
@@ -4605,23 +4605,23 @@ def fear_greed_index():
     if composite >= 80:
         verdict = "EXTREME GREED"
         color = "red"
-        advice = "Euphorie sur les marchés. Historiquement, les périodes d'avidité extrême précèdent souvent des corrections. Soyez prudent, prenez des profits partiels et évitez le FOMO."
+        advice = "Market euphoria. Historically, periods of extreme greed often precede corrections. Be cautious, take partial profits, and avoid FOMO."
     elif composite >= 60:
         verdict = "GREED"
         color = "green"
-        advice = "Sentiment haussier dominant. Les marchés sont confiants mais pas encore dans l'excès. Maintenez vos positions mais gardez du cash pour profiter d'un éventuel pullback."
+        advice = "Bullish sentiment dominant. Markets are confident but not yet in excess. Hold positions but keep cash to take advantage of any pullback."
     elif composite >= 40:
         verdict = "NEUTRAL"
         color = "yellow"
-        advice = "Sentiment mitigé. Ni peur ni avidité excessive. C'est souvent un bon moment pour analyser les fondamentaux et se positionner sélectivement."
+        advice = "Mixed sentiment. Neither fear nor excessive greed. Often a good time to analyze fundamentals and position selectively."
     elif composite >= 20:
         verdict = "FEAR"
         color = "yellow"
-        advice = "La peur domine les marchés. Pour les investisseurs long-terme, c'est historiquement un meilleur point d'entrée que pendant les phases d'euphorie. 'Be greedy when others are fearful.'"
+        advice = "Fear dominates the markets. For long-term investors, this is historically a better entry point than during euphoric phases. 'Be greedy when others are fearful.'"
     else:
         verdict = "EXTREME FEAR"
         color = "green"
-        advice = "Panique généralisée. Warren Buffett dirait d'acheter. Les marchés en panique créent les meilleures opportunités pour les investisseurs patients avec un horizon long terme."
+        advice = "Widespread panic. Warren Buffett would say it's time to buy. Markets in panic create the best opportunities for patient long-term investors."
 
     return _sanitize({
         "composite_score": composite,
@@ -4891,9 +4891,9 @@ def daily_briefing():
             summary_parts.append(f"S&P 500 en {direction} de {abs(sp.get('change_pct', 0))}%.")
         if vix_d:
             if vix_d.get("price", 15) > 25:
-                summary_parts.append(f"VIX élevé à {vix_d['price']} — volatilité accrue, prudence recommandée.")
+                summary_parts.append(f"VIX elevated at {vix_d['price']} — heightened volatility, caution advised.")
             elif vix_d.get("price", 15) < 15:
-                summary_parts.append(f"VIX bas à {vix_d['price']} — marchés calmes, potentiel de complaisance.")
+                summary_parts.append(f"VIX low at {vix_d['price']} — calm markets, potential complacency.")
 
     if sector_moves:
         best_sector = max(sector_moves.items(), key=lambda x: x[1]["avg_change"])
@@ -5037,23 +5037,23 @@ def fair_value(ticker: str):
     # AI Summary
     if composite and current_price > 0:
         if upside and upside > 20:
-            verdict = "SOUS-ÉVALUÉ"
-            summary = f"Notre estimation composite de fair value pour {ticker} est de ${composite}, soit {upside}% au-dessus du prix actuel de ${current_price:.2f}. Selon nos {len(methods)} modèles de valorisation, le titre présente un potentiel de hausse significatif. "
+            verdict = "UNDERVALUED"
+            summary = f"Our composite fair value estimate for {ticker} is ${composite}, {upside}% above the current price of ${current_price:.2f}. Based on our {len(methods)} valuation models, the stock has significant upside potential. "
         elif upside and upside > 5:
-            verdict = "LÉGÈREMENT SOUS-ÉVALUÉ"
-            summary = f"Fair value estimée à ${composite} vs prix actuel ${current_price:.2f} ({upside}% upside). Le titre se négocie en-dessous de sa valeur intrinsèque estimée, avec une marge de sécurité modérée. "
+            verdict = "SLIGHTLY UNDERVALUED"
+            summary = f"Fair value estimated at ${composite} vs current price ${current_price:.2f} ({upside}% upside). The stock trades below our intrinsic value estimate with a moderate margin of safety. "
         elif upside and upside > -10:
-            verdict = "CORRECTEMENT VALORISÉ"
-            summary = f"Fair value estimée à ${composite} vs prix actuel ${current_price:.2f} ({upside}%). Le titre se négocie proche de sa valeur intrinsèque — ni sur-évalué ni sous-évalué. "
+            verdict = "FAIRLY VALUED"
+            summary = f"Fair value estimated at ${composite} vs current price ${current_price:.2f} ({upside}%). The stock trades close to its intrinsic value — neither over- nor undervalued. "
         else:
-            verdict = "SUR-ÉVALUÉ"
-            summary = f"Fair value estimée à ${composite} vs prix actuel ${current_price:.2f} ({upside}%). Le prix actuel dépasse notre estimation de valeur intrinsèque. Prudence recommandée — une correction vers la fair value est possible. "
+            verdict = "OVERVALUED"
+            summary = f"Fair value estimated at ${composite} vs current price ${current_price:.2f} ({upside}%). The current price exceeds our intrinsic value estimate. Caution advised — a correction toward fair value is possible. "
 
         if target:
-            summary += f"Les analystes Wall Street visent ${target} en moyenne ({n_analysts} analystes)."
+            summary += f"Wall Street analysts target ${target} on average ({n_analysts} analysts)."
     else:
-        verdict = "DONNÉES INSUFFISANTES"
-        summary = f"Pas assez de données financières pour estimer une fair value fiable pour {ticker}."
+        verdict = "INSUFFICIENT DATA"
+        summary = f"Not enough financial data to estimate a reliable fair value for {ticker}."
 
     return _sanitize({
         "ticker": ticker,
@@ -5097,66 +5097,66 @@ def swot_analysis(ticker: str):
     # === STRENGTHS ===
     rev_growth = fundamentals.get("revenue_growth") if fundamentals else None
     if rev_growth and rev_growth > 20:
-        strengths.append(f"Forte croissance du CA: +{rev_growth:.0f}% YoY — bien au-dessus du marché")
+        strengths.append(f"Strong revenue growth: +{rev_growth:.0f}% YoY — well above market")
     elif rev_growth and rev_growth > 10:
-        strengths.append(f"Croissance solide du CA: +{rev_growth:.0f}% YoY")
+        strengths.append(f"Solid revenue growth: +{rev_growth:.0f}% YoY")
 
     margin = fundamentals.get("profit_margin") if fundamentals else None
     if margin and margin > 20:
-        strengths.append(f"Marges bénéficiaires élevées ({margin:.0f}%) — fort pricing power")
+        strengths.append(f"High profit margins ({margin:.0f}%) — strong pricing power")
     elif margin and margin > 10:
-        strengths.append(f"Marges bénéficiaires saines ({margin:.0f}%)")
+        strengths.append(f"Healthy profit margins ({margin:.0f}%)")
 
     roe = info.get("returnOnEquity")
     if roe and roe > 0.20:
-        strengths.append(f"ROE excellent ({roe*100:.0f}%) — utilisation efficace des capitaux propres")
+        strengths.append(f"Excellent ROE ({roe*100:.0f}%) — efficient use of equity capital")
 
     debt_eq = info.get("debtToEquity")
     if debt_eq is not None and debt_eq < 50:
-        strengths.append(f"Faible endettement (D/E: {debt_eq:.0f}%) — bilan solide")
+        strengths.append(f"Low debt (D/E: {debt_eq:.0f}%) — strong balance sheet")
 
     mcap = info.get("marketCap", 0)
     if mcap and mcap > 100_000_000_000:
-        strengths.append("Mega-cap: liquidité maximale et accès au capital facilité")
+        strengths.append("Mega-cap: maximum liquidity and easy access to capital")
 
     rsi = technicals.get("rsi") if technicals else None
     ma50_pos = technicals.get("price_vs_ma50") if technicals else None
     if ma50_pos == "above" and rsi and 50 < rsi < 70:
-        strengths.append("Momentum technique positif — au-dessus de la MA50 avec RSI sain")
+        strengths.append("Positive technical momentum — above MA50 with healthy RSI")
 
     fcf = info.get("freeCashflow", 0)
     if fcf and fcf > 0:
-        strengths.append(f"Free Cash Flow positif (${fcf/1e9:.1f}B) — autofinancement assuré")
+        strengths.append(f"Positive Free Cash Flow (${fcf/1e9:.1f}B) — self-funding")
 
     # === WEAKNESSES ===
     if rev_growth is not None and rev_growth < 0:
-        weaknesses.append(f"CA en déclin ({rev_growth:.0f}% YoY) — perte de momentum")
+        weaknesses.append(f"Revenue declining ({rev_growth:.0f}% YoY) — momentum loss")
     elif rev_growth is not None and rev_growth < 5:
-        weaknesses.append(f"Croissance faible ({rev_growth:.0f}% YoY) — difficulté à accélérer")
+        weaknesses.append(f"Slow growth ({rev_growth:.0f}% YoY) — struggling to accelerate")
 
     if margin is not None and margin < 0:
-        weaknesses.append(f"Entreprise non-profitable (marge nette: {margin:.0f}%)")
+        weaknesses.append(f"Unprofitable business (net margin: {margin:.0f}%)")
     elif margin is not None and margin < 5:
-        weaknesses.append(f"Marges faibles ({margin:.0f}%) — vulnérable aux pressions sur les coûts")
+        weaknesses.append(f"Thin margins ({margin:.0f}%) — vulnerable to cost pressures")
 
     pe = fundamentals.get("pe_ratio") if fundamentals else None
     if pe and pe > 50:
-        weaknesses.append(f"Valorisation tendue (PE: {pe:.0f}x) — peu de marge d'erreur")
+        weaknesses.append(f"Stretched valuation (PE: {pe:.0f}x) — little margin for error")
     elif pe and pe > 35:
-        weaknesses.append(f"Valorisation élevée (PE: {pe:.0f}x) — expectations déjà intégrées")
+        weaknesses.append(f"Elevated valuation (PE: {pe:.0f}x) — expectations already priced in")
 
     if debt_eq is not None and debt_eq > 150:
-        weaknesses.append(f"Endettement élevé (D/E: {debt_eq:.0f}%) — risque de refinancement")
+        weaknesses.append(f"High leverage (D/E: {debt_eq:.0f}%) — refinancing risk")
 
     if rsi and rsi > 75:
-        weaknesses.append(f"RSI en surachat ({rsi:.0f}) — pullback technique probable à court terme")
+        weaknesses.append(f"RSI overbought ({rsi:.0f}) — short-term technical pullback likely")
 
     if fcf and fcf < 0:
-        weaknesses.append(f"Free Cash Flow négatif — dépendance au financement externe")
+        weaknesses.append(f"Negative Free Cash Flow — dependent on external financing")
 
     beta = info.get("beta")
     if beta and beta > 1.5:
-        weaknesses.append(f"Volatilité élevée (Beta: {beta:.1f}) — amplifie les mouvements de marché")
+        weaknesses.append(f"High volatility (Beta: {beta:.1f}) — amplifies market moves")
 
     # === OPPORTUNITIES ===
     # Check sector catalysts
@@ -5168,53 +5168,53 @@ def swot_analysis(ticker: str):
     catalysts = SECTOR_CATALYSTS.get(stock_sector, []) if stock_sector else []
     for cat in catalysts[:2]:
         if cat.get("impact") in ("very_high", "high"):
-            opportunities.append(f"Catalyseur: {cat['event']} ({cat['date']}) — {cat.get('description', '')[:100]}")
+            opportunities.append(f"Catalyst: {cat['event']} ({cat['date']}) — {cat.get('description', '')[:100]}")
 
     target = info.get("targetMeanPrice")
     current = info.get("currentPrice") or 0
     if target and current and target > current * 1.15:
-        opportunities.append(f"Consensus analyste: objectif ${target:.0f} (+{((target-current)/current*100):.0f}% upside)")
+        opportunities.append(f"Analyst consensus: target ${target:.0f} (+{((target-current)/current*100):.0f}% upside)")
 
     if rev_growth and rev_growth > 15:
-        opportunities.append("Trajectoire de croissance permet l'expansion des multiples")
+        opportunities.append("Growth trajectory enables multiple expansion")
 
     fwd_pe = fundamentals.get("forward_pe") if fundamentals else None
     if pe and fwd_pe and fwd_pe < pe * 0.8:
-        opportunities.append(f"Compression PE attendue ({pe:.0f}x → {fwd_pe:.0f}x) — earnings en accélération")
+        opportunities.append(f"PE compression expected ({pe:.0f}x → {fwd_pe:.0f}x) — earnings accelerating")
 
     tam = info.get("totalRevenue", 0)
     if tam and mcap and mcap < tam * 8 and rev_growth and rev_growth > 20:
-        opportunities.append("Pénétration de marché encore faible avec un TAM en expansion")
+        opportunities.append("Low market penetration with expanding TAM")
 
     # === THREATS ===
     if rsi and rsi < 30:
-        threats.append(f"RSI en survente ({rsi:.0f}) — momentum baissier établi")
+        threats.append(f"RSI oversold ({rsi:.0f}) — bearish momentum established")
 
     ma200_pos = technicals.get("price_vs_ma200") if technicals else None
     if ma200_pos == "below":
-        threats.append("Prix sous la MA200 — tendance baissière long terme")
+        threats.append("Price below MA200 — long-term downtrend")
 
     if beta and beta > 2:
-        threats.append(f"Beta très élevé ({beta:.1f}) — extrêmement sensible aux corrections de marché")
+        threats.append(f"Very high beta ({beta:.1f}) — extremely sensitive to market corrections")
 
     if pe and pe > 60:
-        threats.append("Valorisation extrême — toute déception sur les résultats peut provoquer un décrochage de -20%+")
+        threats.append("Extreme valuation — any earnings disappointment can trigger -20%+ drop")
 
     if debt_eq and debt_eq > 200:
-        threats.append("Risque de dette significatif — vulnérable en cas de hausse des taux")
+        threats.append("Significant debt risk — vulnerable to rising rates")
 
     short_pct = info.get("shortPercentOfFloat")
     if short_pct and short_pct > 10:
-        threats.append(f"Short interest élevé ({short_pct:.0f}% du float) — pression vendeuse institutionnelle")
+        threats.append(f"High short interest ({short_pct:.0f}% of float) — institutional selling pressure")
 
     if not opportunities:
-        opportunities.append("Pas de catalyseur sectoriel identifié à court terme")
+        opportunities.append("No clear short-term sector catalyst identified")
     if not threats:
-        threats.append("Risques macro standards: taux d'intérêt, récession, géopolitique")
+        threats.append("Standard macro risks: interest rates, recession, geopolitics")
     if not strengths:
-        strengths.append("Données insuffisantes pour identifier des forces claires")
+        strengths.append("Insufficient data to identify clear strengths")
     if not weaknesses:
-        weaknesses.append("Aucune faiblesse majeure identifiée avec les données disponibles")
+        weaknesses.append("No major weaknesses identified with available data")
 
     return _sanitize({
         "ticker": ticker,

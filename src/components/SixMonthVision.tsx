@@ -112,7 +112,7 @@ export default function SixMonthVision({ ticker }: { ticker: string }) {
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-accent text-xs font-semibold tracking-wider">
-              VISION 6 MOIS
+              6-MONTH VISION
             </h3>
             <span className="text-[9px] px-1.5 py-0.5 bg-accent/10 text-accent border border-accent/20">
               FORWARD-LOOKING
@@ -141,7 +141,7 @@ export default function SixMonthVision({ ticker }: { ticker: string }) {
               <div className={`text-sm font-semibold ${verdictText}`}>
                 {data.verdict}
               </div>
-              <div className="text-[10px] text-muted">Score composite / 100</div>
+              <div className="text-[10px] text-muted">Composite score / 100</div>
             </div>
           </div>
           {/* Score arc visualization */}
@@ -173,7 +173,7 @@ export default function SixMonthVision({ ticker }: { ticker: string }) {
       {/* Factor scores */}
       <div className="mb-4">
         <div className="text-[10px] text-muted tracking-wider mb-2">
-          FACTEURS D&apos;ANALYSE
+          ANALYSIS FACTORS
         </div>
         <div className="space-y-2">
           {data.factors.map((f) => (
@@ -249,8 +249,8 @@ export default function SixMonthVision({ ticker }: { ticker: string }) {
       )}
 
       <div className="mt-3 text-[9px] text-muted/40">
-        Analyse prospective basée sur le momentum, les catalyseurs sectoriels et
-        les fondamentaux. Ne constitue pas un conseil en investissement.
+        Forward-looking analysis based on momentum, sector catalysts, and
+        fundamentals. Not investment advice.
       </div>
     </div>
   );

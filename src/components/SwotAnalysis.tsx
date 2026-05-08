@@ -59,7 +59,7 @@ export default function SwotAnalysis({ ticker }: { ticker: string }) {
   const quadrants = [
     {
       key: "strengths",
-      label: "FORCES",
+      label: "STRENGTHS",
       icon: "M5 13l4 4L19 7",
       items: data.strengths,
       color: "text-green",
@@ -69,7 +69,7 @@ export default function SwotAnalysis({ ticker }: { ticker: string }) {
     },
     {
       key: "weaknesses",
-      label: "FAIBLESSES",
+      label: "WEAKNESSES",
       icon: "M6 18L18 6M6 6l12 12",
       items: data.weaknesses,
       color: "text-red",
@@ -79,7 +79,7 @@ export default function SwotAnalysis({ ticker }: { ticker: string }) {
     },
     {
       key: "opportunities",
-      label: "OPPORTUNITÉS",
+      label: "OPPORTUNITIES",
       icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6",
       items: data.opportunities,
       color: "text-accent",
@@ -89,7 +89,7 @@ export default function SwotAnalysis({ ticker }: { ticker: string }) {
     },
     {
       key: "threats",
-      label: "MENACES",
+      label: "THREATS",
       icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z",
       items: data.threats,
       color: "text-yellow",

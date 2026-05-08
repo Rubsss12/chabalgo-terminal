@@ -146,9 +146,9 @@ export default function FairValue({ ticker }: { ticker: string }) {
                 />
               </div>
               <div className="flex justify-between mt-1 text-[8px] text-muted/40">
-                <span>Sur-évalué</span>
+                <span>Overvalued</span>
                 <span>Fair value</span>
-                <span>Sous-évalué</span>
+                <span>Undervalued</span>
               </div>
             </div>
           )}
@@ -156,7 +156,7 @@ export default function FairValue({ ticker }: { ticker: string }) {
 
         {/* Methods table */}
         <div>
-          <div className="text-[9px] text-muted/50 tracking-wider mb-2">MÉTHODES DE VALORISATION</div>
+          <div className="text-[9px] text-muted/50 tracking-wider mb-2">VALUATION METHODS</div>
           <div className="space-y-1.5">
             {data.methods.map((m, i) => (
               <div key={i} className="flex items-center justify-between py-1.5 px-2 bg-subtle/30 rounded-xl">
@@ -178,7 +178,7 @@ export default function FairValue({ ticker }: { ticker: string }) {
         {/* Analyst target range */}
         {data.analyst_target && (
           <div className="border border-border/50 rounded-xl p-3">
-            <div className="text-[9px] text-muted/50 tracking-wider mb-2">OBJECTIF ANALYSTES ({data.analyst_target.count})</div>
+            <div className="text-[9px] text-muted/50 tracking-wider mb-2">ANALYST TARGET ({data.analyst_target.count})</div>
             <div className="flex items-center gap-3">
               <span className="text-[10px] text-red/70">${data.analyst_target.low}</span>
               <div className="flex-1 relative h-1.5 bg-subtle rounded-full">
@@ -203,7 +203,7 @@ export default function FairValue({ ticker }: { ticker: string }) {
               <span className="text-[10px] text-green/70">${data.analyst_target.high}</span>
             </div>
             <div className="text-center text-[10px] text-accent font-medium mt-1">
-              Moyenne: ${data.analyst_target.mean}
+              Mean: ${typeof data.analyst_target.mean === "number" ? data.analyst_target.mean.toFixed(2) : data.analyst_target.mean}
             </div>
           </div>
         )}

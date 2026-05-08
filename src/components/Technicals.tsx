@@ -58,14 +58,8 @@ function buildSummary(t: AnalysisData["technicals"], price: number, ticker: stri
 export default function Technicals({ data }: { data: AnalysisData }) {
   const t = data.technicals;
 
-  if (t.source === "unavailable") {
-    return (
-      <div className="bg-card border border-border p-5">
-        <h3 className="text-accent text-xs font-semibold tracking-wider mb-2">TECHNICALS</h3>
-        <span className="text-muted text-sm">Data unavailable</span>
-      </div>
-    );
-  }
+  // Hide if unavailable — don't show ugly empty card
+  if (t.source === "unavailable") return null;
 
   const signalColor = colorForSignal(t.signal);
 

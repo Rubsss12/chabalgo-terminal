@@ -78,13 +78,8 @@ export default function DCFValuation({ ticker }: { ticker: string }) {
     );
   }
 
-  if (!data) {
-    return (
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="text-[10px] text-muted/50">DCF valuation unavailable (FMP API key required)</div>
-      </div>
-    );
-  }
+  // Hide entirely if no data available — don't show ugly placeholder
+  if (!data) return null;
 
   const r = data.ratios;
   const rating = data.rating;

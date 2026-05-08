@@ -85,14 +85,8 @@ function buildSummary(f: AnalysisData["fundamentals"], ticker: string): string {
 export default function Fundamentals({ data }: { data: AnalysisData }) {
   const f = data.fundamentals;
 
-  if (f.source === "unavailable") {
-    return (
-      <div className="bg-card border border-border p-5">
-        <h3 className="text-accent text-xs font-semibold tracking-wider mb-2">FUNDAMENTALS</h3>
-        <span className="text-muted text-sm">Data unavailable</span>
-      </div>
-    );
-  }
+  // Hide if data is unavailable — don't show ugly empty state
+  if (f.source === "unavailable") return null;
 
   const surpriseColor = f.eps_surprise_pct != null
     ? f.eps_surprise_pct > 0 ? "text-green" : f.eps_surprise_pct < 0 ? "text-red" : "text-yellow"

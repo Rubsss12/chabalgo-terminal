@@ -65,7 +65,27 @@ export default function NewsPanel({ ticker }: { ticker: string }) {
     );
   }
 
-  const newsToShow = expanded ? data.news : data.news.slice(0, 5);
+  // Deduplicate near-identical headlines (different wire services running same story)
+  const dedupedNews = (() => {
+    const seen = new Set<string>();
+    const out: typeof data.news = [];
+    for (const n of data.news) {
+      // Normalize headline: lowercase, strip punctuation, take first 6 significant words
+      const key = n.headline
+        .toLowerCase()
+        .replace(/[^\w\s]/g, "")
+        .split(/\s+/)
+        .filter((w) => w.length > 2 && !["the", "and", "for", "with", "from", "this", "that"].includes(w))
+        .slice(0, 6)
+        .join(" ");
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        out.push(n);
+      }
+    }
+    return out;
+  })();
+  const newsToShow = expanded ? dedupedNews : dedupedNews.slice(0, 5);
   const sentiment = data.sentiment;
   const total = sentiment.analysts_total;
 
@@ -102,7 +122,7 @@ export default function NewsPanel({ ticker }: { ticker: string }) {
         <div className="flex items-center gap-3">
           <h3 className="text-accent text-xs font-semibold tracking-wider">WHY IT&apos;S MOVING</h3>
           <span className="text-[10px] text-muted">
-            {data.news.length} articles from {sources.length} sources
+            {dedupedNews.length} articles from {sources.length} sources
           </span>
         </div>
         {sentiment.source !== "unavailable" && total > 0 && (
@@ -183,12 +203,12 @@ export default function NewsPanel({ ticker }: { ticker: string }) {
       </div>
 
       {/* Show more */}
-      {data.news.length > 5 && (
+      {dedupedNews.length > 5 && (
         <button
           onClick={() => setExpanded(!expanded)}
           className="text-xs text-accent hover:text-accent/80 mt-3 transition-colors"
         >
-          {expanded ? "Show less" : `Show all ${data.news.length} articles`}
+          {expanded ? "Show less" : `Show all ${dedupedNews.length} articles`}
         </button>
       )}
 

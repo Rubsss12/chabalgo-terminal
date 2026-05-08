@@ -108,14 +108,8 @@ export default function Charts({ data, ticker }: ChartsProps) {
     return data;
   }, [data, range]);
 
-  if (!data.length) {
-    return (
-      <div className="bg-card border border-border p-5">
-        <h3 className="text-accent text-xs font-semibold tracking-wider mb-2">CHARTS</h3>
-        <span className="text-muted text-sm">No historical data available</span>
-      </div>
-    );
-  }
+  // Hide chart if no historical data — keeps the layout clean
+  if (!data.length) return null;
 
   const priceMin = Math.min(...filtered.map((d) => d.low)) * 0.98;
   const priceMax = Math.max(...filtered.map((d) => d.high)) * 1.02;

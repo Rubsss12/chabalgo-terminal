@@ -120,15 +120,16 @@ export default function EarningsPanel({ ticker }: { ticker: string }) {
   const beatCount = chartData.filter((d) => d.beat).length;
   const totalCount = chartData.filter((d) => d.actual != null).length;
 
+  // Hide entirely when there's no data and not loading
+  if (!loading && !data) return null;
+
   return (
     <div className="bg-card border border-border p-5">
       <h3 className="text-accent text-xs font-semibold tracking-wider mb-4">EARNINGS</h3>
 
       {loading ? (
         <div className="text-accent text-xs animate-pulse">Loading earnings data...</div>
-      ) : !data ? (
-        <div className="text-muted text-sm">Data unavailable</div>
-      ) : (
+      ) : !data ? null : (
         <>
           {data.next_earnings ? (
             <div className="border border-border bg-subtle p-3 mb-4">

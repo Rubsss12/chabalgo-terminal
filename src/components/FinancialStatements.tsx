@@ -95,13 +95,8 @@ export default function FinancialStatements({ ticker }: { ticker: string }) {
     );
   }
 
-  if (error || !data) {
-    return (
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="text-[10px] text-red/70">{error || "No data"}</div>
-      </div>
-    );
-  }
+  // Hide entirely if financials aren't available
+  if (error || !data) return null;
 
   const statementMap: Record<StatementType, Record<string, unknown>[]> = {
     income: data.income_statement || [],

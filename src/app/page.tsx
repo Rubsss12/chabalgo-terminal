@@ -196,12 +196,10 @@ export default function Home() {
             </div>
           </button>
 
-          {/* Center search — only on landing */}
-          {!data && !deepDiveSector && (
-            <div className="hidden md:block flex-1 max-w-lg mx-8">
-              <SearchBar onSearch={handleSearch} loading={loading} />
-            </div>
-          )}
+          {/* Center search — visible everywhere */}
+          <div className="hidden md:block flex-1 max-w-lg mx-8">
+            <SearchBar onSearch={handleSearch} loading={loading} />
+          </div>
 
           {/* Right side */}
           <div className="flex items-center gap-5">
@@ -213,7 +211,7 @@ export default function Home() {
                 </span>
                 <span className="text-green font-medium">LIVE</span>
                 <span className="text-border-light">|</span>
-                <span className="tabular-nums">{lastRefresh.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
+                <span className="tabular-nums">{lastRefresh.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
               </div>
             )}
             <div className="flex items-center gap-2 text-xs">
@@ -430,25 +428,20 @@ export default function Home() {
       {!data && !loading && !error && !deepDiveSector && (
         <div className="fade-in">
 
-          {/* Hero section */}
+          {/* Hero section — compact */}
           <div className="relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-accent/3 via-transparent to-transparent pointer-events-none" />
-            <div className="max-w-[1280px] mx-auto px-6 pt-12 pb-8 text-center relative">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/8 border border-accent/15 mb-5">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                <span className="text-accent text-[11px] font-semibold tracking-wide">Real-time market intelligence</span>
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight leading-tight">
-                Institutional-grade research.
-                <br />
-                <span className="gradient-text">Built for everyone.</span>
+            <div className="max-w-[1280px] mx-auto px-6 pt-6 pb-4 text-center relative">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-tight">
+                Institutional-grade research,{" "}
+                <span className="gradient-text">built for everyone.</span>
               </h1>
-              <p className="text-muted text-sm mt-4 max-w-lg mx-auto leading-relaxed">
-                Deep sector analysis, AI-powered valuations, insider tracking, and macro intelligence — all from one terminal.
+              <p className="text-muted text-[11px] sm:text-xs mt-1.5 max-w-lg mx-auto">
+                Sectors, AI valuations, insider flow, macro, crypto, global markets — one terminal.
               </p>
 
               {/* Search — mobile only (desktop has it in nav) */}
-              <div className="md:hidden mt-6 max-w-md mx-auto">
+              <div className="md:hidden mt-4 max-w-md mx-auto">
                 <SearchBar onSearch={handleSearch} loading={loading} />
               </div>
             </div>
@@ -627,7 +620,7 @@ export default function Home() {
           {/* Footer */}
           <footer className="border-t border-border py-6 text-center">
             <div className="text-xs text-muted/40">
-              ChabAlgo Terminal &middot; Real-time data from Finnhub, FRED, SEC EDGAR, FMP &middot; Not financial advice
+              ChabAlgo Terminal &middot; Data: Finnhub · Yahoo Finance · CoinGecko · FRED · SEC EDGAR · ApeWisdom · Reddit &middot; Not financial advice
             </div>
           </footer>
         </div>

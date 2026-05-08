@@ -80,7 +80,7 @@ export default function SectorHeatmap({ onSearch }: { onSearch?: (ticker: string
             <span className="text-[9px] px-1.5 py-0.5 bg-accent/10 text-accent border border-accent/20">MARKET FLOW</span>
           </div>
           <div className="text-muted text-[10px] mt-0.5">
-            {Object.keys(data.sectors).length} sectors &middot; Money flow visualization
+            {Object.keys(data.sectors).length} {Object.keys(data.sectors).length === 1 ? "sector" : "sectors"} &middot; Money flow visualization
           </div>
         </div>
         <div className="flex gap-1">
@@ -92,7 +92,7 @@ export default function SectorHeatmap({ onSearch }: { onSearch?: (ticker: string
                 period === p ? "bg-accent/10 text-accent border-accent/30" : "text-muted border-border hover:text-foreground"
               }`}
             >
-              {p === "1d" ? "1J" : p === "1w" ? "1S" : "1M"}
+              {p === "1d" ? "1D" : p === "1w" ? "1W" : "1M"}
             </button>
           ))}
         </div>
