@@ -158,8 +158,84 @@ def get_company_profile(ticker: str) -> dict:
     return {}
 
 
+def _finnhub_metrics(ticker: str) -> dict:
+    """Get fundamentals from Finnhub /stock/metric endpoint (free tier, no rate limit issues)."""
+    data = finnhub_get("stock/metric", {"symbol": ticker, "metric": "all"})
+    if not data:
+        return {}
+    m = data.get("metric", {})
+    out = {}
+    if m.get("peTTM") is not None:
+        out["pe_ratio"] = _safe_float(m.get("peTTM"))
+    if m.get("peNormalizedAnnual") is not None:
+        out["forward_pe"] = _safe_float(m.get("peNormalizedAnnual"))
+    if m.get("revenueGrowthTTMYoy") is not None:
+        out["revenue_growth_yoy"] = _safe_float(m.get("revenueGrowthTTMYoy"))
+    if m.get("grossMarginTTM") is not None:
+        out["gross_margin"] = _safe_float(m.get("grossMarginTTM"))
+    if m.get("operatingMarginTTM") is not None:
+        out["operating_margin"] = _safe_float(m.get("operatingMarginTTM"))
+    if m.get("epsTTM") is not None:
+        out["eps_last_quarter"] = _safe_float(m.get("epsTTM"))
+    # Net debt approximation: totalDebt/equityQuarterly + cash
+    if m.get("totalDebt/totalEquityQuarterly") is not None and m.get("netDebtAnnual") is not None:
+        out["net_debt"] = _safe_float(m.get("netDebtAnnual"))
+    elif m.get("netDebtAnnual") is not None:
+        out["net_debt"] = _safe_float(m.get("netDebtAnnual"))
+    return out
+
+
+def _alpha_vantage_overview(ticker: str) -> dict:
+    """Get fundamentals from Alpha Vantage."""
+    overview = alpha_vantage_get("OVERVIEW", ticker)
+    if not overview or not overview.get("Symbol"):
+        return {}
+    out = {}
+    out["pe_ratio"] = _safe_float(overview.get("TrailingPE"))
+    out["forward_pe"] = _safe_float(overview.get("ForwardPE"))
+    out["revenue_growth_yoy"] = _safe_float(overview.get("QuarterlyRevenueGrowthYOY"))
+    out["operating_margin"] = _safe_float(overview.get("OperatingMarginTTM"))
+    out["eps_last_quarter"] = _safe_float(overview.get("EPS"))
+    revenue_ttm = _safe_float(overview.get("RevenueTTM"))
+    gross_profit_ttm = _safe_float(overview.get("GrossProfitTTM"))
+    if revenue_ttm and gross_profit_ttm:
+        out["gross_margin"] = round(gross_profit_ttm / revenue_ttm * 100, 1)
+    return {k: v for k, v in out.items() if v is not None}
+
+
+def _yfinance_fundamentals(ticker: str) -> dict:
+    """Get fundamentals from yfinance (rate-limited but most complete when it works)."""
+    try:
+        t = yf.Ticker(ticker)
+        info = t.info
+        out = {}
+        if info.get("trailingPE") is not None:
+            out["pe_ratio"] = _safe_float(info.get("trailingPE"))
+        if info.get("forwardPE") is not None:
+            out["forward_pe"] = _safe_float(info.get("forwardPE"))
+        if info.get("revenueGrowth") is not None:
+            out["revenue_growth_yoy"] = _pct(info.get("revenueGrowth"))
+        if info.get("grossMargins") is not None:
+            out["gross_margin"] = _pct(info.get("grossMargins"))
+        if info.get("operatingMargins") is not None:
+            out["operating_margin"] = _pct(info.get("operatingMargins"))
+        if info.get("trailingEps") is not None:
+            out["eps_last_quarter"] = _safe_float(info.get("trailingEps"))
+        total_debt = info.get("totalDebt", 0) or 0
+        total_cash = info.get("totalCash", 0) or 0
+        if total_debt or total_cash:
+            out["net_debt"] = round(total_debt - total_cash, 0)
+        return out
+    except Exception:
+        return {}
+
+
 def get_fundamentals(ticker: str) -> dict:
-    """Get fundamentals from Alpha Vantage, yfinance fallback."""
+    """Aggregate fundamentals from ALL free sources — Finnhub, Alpha Vantage, yfinance.
+
+    Each source is tried; whichever has the metric wins. We always populate as much
+    as we can from any free source, so the user never sees an empty 'unavailable' card.
+    """
     result = {
         "pe_ratio": None,
         "forward_pe": None,
@@ -173,76 +249,112 @@ def get_fundamentals(ticker: str) -> dict:
         "source": "unavailable",
     }
 
-    # Try Alpha Vantage overview
-    overview = alpha_vantage_get("OVERVIEW", ticker)
-    if overview and overview.get("Symbol"):
-        result["source"] = "alpha_vantage"
-        result["pe_ratio"] = _safe_float(overview.get("TrailingPE"))
-        result["forward_pe"] = _safe_float(overview.get("ForwardPE"))
-        result["revenue_growth_yoy"] = _safe_float(overview.get("QuarterlyRevenueGrowthYOY"))
-        result["gross_margin"] = _safe_float(overview.get("GrossProfitTTM"))  # will compute ratio below
-        result["operating_margin"] = _safe_float(overview.get("OperatingMarginTTM"))
-        result["eps_last_quarter"] = _safe_float(overview.get("EPS"))
+    sources_used = []
 
-        # Compute gross margin as ratio if we have revenue
-        revenue_ttm = _safe_float(overview.get("RevenueTTM"))
-        gross_profit_ttm = _safe_float(overview.get("GrossProfitTTM"))
-        if revenue_ttm and gross_profit_ttm:
-            result["gross_margin"] = round(gross_profit_ttm / revenue_ttm * 100, 1)
-
-        # Try earnings for surprise
-        earnings = alpha_vantage_get("EARNINGS", ticker)
-        if earnings and earnings.get("quarterlyEarnings"):
-            latest = earnings["quarterlyEarnings"][0]
-            result["eps_last_quarter"] = _safe_float(latest.get("reportedEPS"))
-            result["eps_estimate"] = _safe_float(latest.get("estimatedEPS"))
-            if result["eps_last_quarter"] is not None and result["eps_estimate"] is not None and result["eps_estimate"] != 0:
-                result["eps_surprise_pct"] = round(
-                    ((result["eps_last_quarter"] - result["eps_estimate"]) / abs(result["eps_estimate"])) * 100, 1
-                )
-
-        # Net debt from balance sheet
-        bs = alpha_vantage_get("BALANCE_SHEET", ticker)
-        if bs and bs.get("quarterlyReports"):
-            latest_bs = bs["quarterlyReports"][0]
-            total_debt = _safe_float(latest_bs.get("shortLongTermDebtTotal")) or (
-                (_safe_float(latest_bs.get("shortTermDebt")) or 0) +
-                (_safe_float(latest_bs.get("longTermDebt")) or 0)
-            )
-            cash = _safe_float(latest_bs.get("cashAndCashEquivalentsAtCarryingValue")) or \
-                   _safe_float(latest_bs.get("cashAndShortTermInvestments")) or 0
-            if total_debt is not None:
-                result["net_debt"] = round(total_debt - cash, 0)
-
-        return result
-
-    # Fallback: yfinance
+    # 1. Finnhub /stock/metric — most reliable, free tier, no auth issues
     try:
-        t = yf.Ticker(ticker)
-        info = t.info
-        result["source"] = "yfinance"
-        result["pe_ratio"] = _safe_float(info.get("trailingPE"))
-        result["forward_pe"] = _safe_float(info.get("forwardPE"))
-        result["revenue_growth_yoy"] = _pct(info.get("revenueGrowth"))
-        result["gross_margin"] = _pct(info.get("grossMargins"))
-        result["operating_margin"] = _pct(info.get("operatingMargins"))
-
-        # EPS
-        result["eps_last_quarter"] = _safe_float(info.get("trailingEps"))
-
-        # Net debt
-        total_debt = info.get("totalDebt", 0) or 0
-        total_cash = info.get("totalCash", 0) or 0
-        if total_debt or total_cash:
-            result["net_debt"] = round(total_debt - total_cash, 0)
+        finnhub_data = _finnhub_metrics(ticker)
+        if finnhub_data:
+            for k, v in finnhub_data.items():
+                if result[k] is None and v is not None:
+                    result[k] = v
+            sources_used.append("finnhub")
     except Exception:
         pass
+
+    # 2. Alpha Vantage OVERVIEW — fills in gaps Finnhub missed
+    try:
+        av_data = _alpha_vantage_overview(ticker)
+        if av_data:
+            for k, v in av_data.items():
+                if result[k] is None and v is not None:
+                    result[k] = v
+            sources_used.append("alpha_vantage")
+    except Exception:
+        pass
+
+    # 3. Alpha Vantage EARNINGS for EPS surprise (Finnhub doesn't have it)
+    try:
+        if result["eps_estimate"] is None or result["eps_surprise_pct"] is None:
+            earnings = alpha_vantage_get("EARNINGS", ticker)
+            if earnings and earnings.get("quarterlyEarnings"):
+                latest = earnings["quarterlyEarnings"][0]
+                eps = _safe_float(latest.get("reportedEPS"))
+                est = _safe_float(latest.get("estimatedEPS"))
+                if eps is not None and result["eps_last_quarter"] is None:
+                    result["eps_last_quarter"] = eps
+                if est is not None:
+                    result["eps_estimate"] = est
+                if eps is not None and est is not None and est != 0:
+                    result["eps_surprise_pct"] = round(((eps - est) / abs(est)) * 100, 1)
+    except Exception:
+        pass
+
+    # 4. Net debt from Alpha Vantage balance sheet if still missing
+    if result["net_debt"] is None:
+        try:
+            bs = alpha_vantage_get("BALANCE_SHEET", ticker)
+            if bs and bs.get("quarterlyReports"):
+                latest_bs = bs["quarterlyReports"][0]
+                total_debt = _safe_float(latest_bs.get("shortLongTermDebtTotal")) or (
+                    (_safe_float(latest_bs.get("shortTermDebt")) or 0) +
+                    (_safe_float(latest_bs.get("longTermDebt")) or 0)
+                )
+                cash = _safe_float(latest_bs.get("cashAndCashEquivalentsAtCarryingValue")) or \
+                       _safe_float(latest_bs.get("cashAndShortTermInvestments")) or 0
+                if total_debt is not None:
+                    result["net_debt"] = round(total_debt - cash, 0)
+        except Exception:
+            pass
+
+    # 5. yfinance — last resort (rate-limited but most complete when working)
+    missing_critical = result["pe_ratio"] is None and result["revenue_growth_yoy"] is None
+    if missing_critical:
+        try:
+            yf_data = _yfinance_fundamentals(ticker)
+            if yf_data:
+                for k, v in yf_data.items():
+                    if result[k] is None and v is not None:
+                        result[k] = v
+                sources_used.append("yfinance")
+        except Exception:
+            pass
+
+    # Mark source if we got anything
+    if sources_used:
+        result["source"] = " + ".join(sources_used)
+    elif any(result[k] is not None for k in ("pe_ratio", "revenue_growth_yoy", "operating_margin", "eps_last_quarter")):
+        result["source"] = "partial"
 
     return result
 
 
+def _yahoo_chart_history(ticker: str, range_: str = "1y") -> Optional[list]:
+    """Fetch historical close prices from Yahoo's v8 chart endpoint (no auth, no rate limit)."""
+    try:
+        r = requests.get(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
+            params={"range": range_, "interval": "1d"},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=6,
+        )
+        if r.status_code != 200:
+            return None
+        result = r.json().get("chart", {}).get("result")
+        if not result:
+            return None
+        ind = result[0].get("indicators", {}).get("quote", [{}])[0]
+        closes = ind.get("close")
+        if not closes:
+            return None
+        # Filter out None values
+        return [c for c in closes if c is not None]
+    except Exception:
+        return None
+
+
 def get_technicals(ticker: str) -> dict:
-    """Compute MA50, MA200, RSI from yfinance historical data."""
+    """Compute MA50, MA200, RSI from historical data — multi-source: Yahoo HTTP, Stooq, yfinance."""
     result = {
         "ma50": None,
         "ma200": None,
@@ -255,13 +367,34 @@ def get_technicals(ticker: str) -> dict:
         "source": "unavailable",
     }
 
-    try:
-        t = yf.Ticker(ticker)
-        hist = t.history(period="1y")
-        if hist.empty or len(hist) < 14:
-            return result
+    closes_list = None
+    src = None
 
-        closes = hist["Close"].values
+    # 1. Yahoo v8 chart (no rate limit, very reliable)
+    try:
+        cl = _yahoo_chart_history(ticker, "1y")
+        if cl and len(cl) >= 14:
+            closes_list = cl
+            src = "yahoo"
+    except Exception:
+        pass
+
+    # 2. Fallback: yfinance
+    if not closes_list:
+        try:
+            t = yf.Ticker(ticker)
+            hist = t.history(period="1y")
+            if not hist.empty and len(hist) >= 14:
+                closes_list = list(hist["Close"].values)
+                src = "yfinance"
+        except Exception:
+            pass
+
+    if not closes_list or len(closes_list) < 14:
+        return result
+
+    try:
+        closes = np.array(closes_list)
         current_price = closes[-1]
 
         # MA50
@@ -330,7 +463,7 @@ def get_technicals(ticker: str) -> dict:
             result["signal"] = "Neutral"
             result["signal_reason"] = "mixed signals"
 
-        result["source"] = "yfinance"
+        result["source"] = src or "yahoo"
     except Exception:
         pass
 
@@ -363,44 +496,91 @@ def compute_rsi(closes: np.ndarray, period: int = 14) -> Optional[float]:
     return float(rsi)
 
 
-def get_historical_data(ticker: str, period: str = "1y") -> list:
-    """Get OHLCV data from yfinance."""
+def _yahoo_chart_full(ticker: str, range_: str = "1y") -> list:
+    """Fetch full OHLCV from Yahoo's v8 chart endpoint (no auth, no rate limit)."""
     try:
-        t = yf.Ticker(ticker)
-        hist = t.history(period=period)
-        if hist.empty:
+        r = requests.get(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
+            params={"range": range_, "interval": "1d"},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=8,
+        )
+        if r.status_code != 200:
             return []
+        result = r.json().get("chart", {}).get("result")
+        if not result:
+            return []
+        ts_arr = result[0].get("timestamp", []) or []
+        ind = result[0].get("indicators", {}).get("quote", [{}])[0]
+        opens = ind.get("open", []) or []
+        highs = ind.get("high", []) or []
+        lows = ind.get("low", []) or []
+        closes = ind.get("close", []) or []
+        volumes = ind.get("volume", []) or []
 
-        closes = hist["Close"].values
         records = []
-        for i, (date, row) in enumerate(hist.iterrows()):
-            entry = {
-                "date": date.strftime("%Y-%m-%d"),
-                "open": round(float(row["Open"]), 2),
-                "high": round(float(row["High"]), 2),
-                "low": round(float(row["Low"]), 2),
-                "close": round(float(row["Close"]), 2),
-                "volume": int(row["Volume"]),
-            }
-
-            # Compute MA50 and MA200 at each point
-            idx = i + 1
-            if idx >= 50:
-                entry["ma50"] = round(float(np.mean(closes[idx - 50:idx])), 2)
-            if idx >= 200:
-                entry["ma200"] = round(float(np.mean(closes[idx - 200:idx])), 2)
-
-            # Compute RSI at each point (need at least period+1 data points)
-            if idx >= 15:
-                rsi_val = compute_rsi(closes[:idx], period=14)
-                if rsi_val is not None:
-                    entry["rsi"] = round(rsi_val, 1)
-
-            records.append(entry)
-
+        for i, ts in enumerate(ts_arr):
+            if i >= len(closes) or closes[i] is None:
+                continue
+            records.append({
+                "date": datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d"),
+                "open": round(float(opens[i]), 2) if i < len(opens) and opens[i] is not None else None,
+                "high": round(float(highs[i]), 2) if i < len(highs) and highs[i] is not None else None,
+                "low": round(float(lows[i]), 2) if i < len(lows) and lows[i] is not None else None,
+                "close": round(float(closes[i]), 2),
+                "volume": int(volumes[i]) if i < len(volumes) and volumes[i] is not None else 0,
+            })
         return records
     except Exception:
         return []
+
+
+def get_historical_data(ticker: str, period: str = "1y") -> list:
+    """Get OHLCV data — Yahoo HTTP first (no rate limit), yfinance fallback."""
+    records = []
+
+    # 1. Yahoo v8 chart endpoint (preferred — no rate limit)
+    try:
+        records = _yahoo_chart_full(ticker, period)
+    except Exception:
+        pass
+
+    # 2. Fallback to yfinance
+    if not records:
+        try:
+            t = yf.Ticker(ticker)
+            hist = t.history(period=period)
+            if not hist.empty:
+                closes_arr = hist["Close"].values
+                for i, (date, row) in enumerate(hist.iterrows()):
+                    records.append({
+                        "date": date.strftime("%Y-%m-%d"),
+                        "open": round(float(row["Open"]), 2),
+                        "high": round(float(row["High"]), 2),
+                        "low": round(float(row["Low"]), 2),
+                        "close": round(float(row["Close"]), 2),
+                        "volume": int(row["Volume"]),
+                    })
+        except Exception:
+            pass
+
+    if not records:
+        return []
+
+    # Compute MA50, MA200, RSI on whichever set we got
+    closes = np.array([r["close"] for r in records])
+    for i, r in enumerate(records):
+        idx = i + 1
+        if idx >= 50:
+            r["ma50"] = round(float(np.mean(closes[idx - 50:idx])), 2)
+        if idx >= 200:
+            r["ma200"] = round(float(np.mean(closes[idx - 200:idx])), 2)
+        if idx >= 15:
+            rsi_val = compute_rsi(closes[:idx], period=14)
+            if rsi_val is not None:
+                r["rsi"] = round(rsi_val, 1)
+
+    return records
 
 
 def get_news(ticker: str) -> list:
