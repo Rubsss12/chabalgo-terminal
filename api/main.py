@@ -831,32 +831,72 @@ EXCHANGE_LABELS = {
 }
 
 
-@app.get("/search")
-def search_ticker(q: str):
-    """Global ticker search via Yahoo Finance — supports all major exchanges worldwide."""
-    query = q.strip()
-    if len(query) < 1:
-        return {"results": []}
+def _yahoo_search(query: str) -> list:
+    """Search Yahoo Finance for tickers."""
     try:
         r = requests.get(
             "https://query2.finance.yahoo.com/v1/finance/search",
             params={"q": query, "quotesCount": 15, "newsCount": 0},
             headers={"User-Agent": "Mozilla/5.0"},
-            timeout=6,
+            timeout=5,
+        )
+        if r.status_code == 200:
+            return r.json().get("quotes", [])
+    except Exception:
+        pass
+    return []
+
+
+def _finnhub_search(query: str) -> list:
+    """Search Finnhub for symbols (broader coverage for less-known tickers)."""
+    data = finnhub_get("search", {"q": query})
+    if not data:
+        return []
+    return data.get("result", []) or []
+
+
+def _direct_ticker_lookup(symbol: str) -> Optional[dict]:
+    """Validate a ticker directly via Yahoo's chart endpoint — works for any symbol."""
+    try:
+        r = requests.get(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
+            params={"range": "1d", "interval": "1d"},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=4,
         )
         if r.status_code != 200:
-            return {"results": []}
-        quotes = r.json().get("quotes", [])
+            return None
+        result = r.json().get("chart", {}).get("result")
+        if not result:
+            return None
+        meta = result[0].get("meta", {})
+        if not meta.get("regularMarketPrice"):
+            return None
+        return {
+            "symbol": meta.get("symbol", symbol).upper(),
+            "description": meta.get("shortName") or meta.get("longName") or symbol.upper(),
+            "type": (meta.get("instrumentType") or "Equity").title(),
+            "exchange": EXCHANGE_LABELS.get(meta.get("exchangeName", ""), meta.get("fullExchangeName", "")),
+        }
     except Exception:
+        return None
+
+
+@app.get("/search")
+def search_ticker(q: str):
+    """Global ticker search — Yahoo first, Finnhub fallback, direct lookup as last resort."""
+    query = q.strip()
+    if len(query) < 1:
         return {"results": []}
 
     results = []
     seen = set()
-    for q_item in quotes:
+
+    # 1. Yahoo Finance search (primary — best global coverage)
+    for q_item in _yahoo_search(query):
         symbol = q_item.get("symbol", "")
         if not symbol or symbol in seen:
             continue
-        # Only equities, ETFs, and indices — skip mutual funds, options
         qt = q_item.get("quoteType", "")
         if qt not in ("EQUITY", "ETF", "INDEX", "CRYPTOCURRENCY"):
             continue
@@ -870,6 +910,45 @@ def search_ticker(q: str):
         })
         if len(results) >= 10:
             break
+
+    # 2. If Yahoo returned nothing or few results, try Finnhub
+    if len(results) < 5:
+        for item in _finnhub_search(query)[:10]:
+            symbol = item.get("symbol", "")
+            if not symbol or symbol in seen:
+                continue
+            seen.add(symbol)
+            results.append({
+                "symbol": symbol,
+                "description": item.get("description", ""),
+                "type": item.get("type", "Equity").title(),
+                "exchange": "",
+            })
+            if len(results) >= 10:
+                break
+
+    # 3. Last resort: try treating query as direct ticker(s) via Yahoo chart endpoint
+    # This catches cases where Yahoo/Finnhub search miss the ticker but the symbol is real
+    if not results:
+        import re
+        candidates = []
+        # Try the full query as a ticker (e.g., "ATAI", "005930.KS", "BRK-B")
+        full = query.upper().strip()
+        if re.match(r"^[A-Z0-9][A-Z0-9.\-]{0,10}$", full):
+            candidates.append(full)
+        # Also try each individual word — user might type "ATAI Life Sciences"
+        for word in query.upper().split():
+            w = re.sub(r"[^A-Z0-9.\-]", "", word)
+            if 2 <= len(w) <= 6 and w not in candidates:
+                candidates.append(w)
+        # Validate each candidate via Yahoo chart endpoint
+        for cand in candidates[:3]:
+            direct = _direct_ticker_lookup(cand)
+            if direct and direct["symbol"] not in seen:
+                seen.add(direct["symbol"])
+                results.append(direct)
+                if len(results) >= 5:
+                    break
 
     return {"results": results}
 
