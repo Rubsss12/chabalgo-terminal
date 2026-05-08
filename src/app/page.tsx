@@ -57,6 +57,7 @@ const SECFilings = dynamic(() => import("@/components/SECFilings"), { ssr: false
 const DCFValuation = dynamic(() => import("@/components/DCFValuation"), { ssr: false });
 const CryptoMarkets = dynamic(() => import("@/components/CryptoMarkets"), { ssr: false });
 const CryptoAnalysis = dynamic(() => import("@/components/CryptoAnalysis"), { ssr: false });
+const RedditTracker = dynamic(() => import("@/components/RedditTracker"), { ssr: false });
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -595,6 +596,7 @@ export default function Home() {
                   ))}
                 </div>
 
+                <RedditTracker onSearch={handleSearch} />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <OptionsFlow onSearch={handleSearch} />
                   <InsiderScreener onSearch={handleSearch} />

@@ -6985,6 +6985,135 @@ def crypto_analyze(coin_id: str):
     return result
 
 
+# ══════════════════════════════════════════════════════════════
+#  REDDIT — Most Talked-About Stocks Tracker
+# ══════════════════════════════════════════════════════════════
+_reddit_cache: Dict[str, Any] = {}
+_REDDIT_CACHE_TTL = 600  # 10 min — Reddit data doesn't change that fast
+
+
+def _reddit_sentiment_from_posts(ticker: str) -> Optional[dict]:
+    """Grab recent WSB posts mentioning a ticker and compute simple sentiment."""
+    try:
+        r = requests.get(
+            f"https://www.reddit.com/r/wallstreetbets/search.json",
+            params={"q": ticker, "restrict_sr": "on", "sort": "new", "limit": 25, "t": "week"},
+            headers={"User-Agent": "ChabAlgo/1.0"},
+            timeout=6,
+        )
+        if r.status_code != 200:
+            return None
+        posts = r.json().get("data", {}).get("children", [])
+        if not posts:
+            return None
+
+        bullish_words = {"buy", "bull", "calls", "moon", "long", "rocket", "squeeze", "undervalued", "breakout", "yolo", "tendies", "ape", "diamond", "hold"}
+        bearish_words = {"sell", "bear", "puts", "short", "crash", "dump", "overvalued", "drill", "bag", "loss", "rip", "dead"}
+
+        bull_count = 0
+        bear_count = 0
+        total_score = 0
+        for child in posts:
+            p = child.get("data", {})
+            text = f"{p.get('title', '')} {p.get('selftext', '')}".lower()
+            total_score += p.get("score", 0)
+            for w in bullish_words:
+                if w in text:
+                    bull_count += 1
+            for w in bearish_words:
+                if w in text:
+                    bear_count += 1
+
+        total_signals = bull_count + bear_count
+        if total_signals == 0:
+            sentiment_pct = 50.0
+            sentiment_label = "neutral"
+        else:
+            sentiment_pct = round((bull_count / total_signals) * 100, 1)
+            sentiment_label = "bullish" if sentiment_pct > 60 else "bearish" if sentiment_pct < 40 else "neutral"
+
+        return {
+            "sentiment_pct": sentiment_pct,
+            "sentiment_label": sentiment_label,
+            "bull_signals": bull_count,
+            "bear_signals": bear_count,
+            "post_count": len(posts),
+            "avg_score": round(total_score / len(posts), 1) if posts else 0,
+        }
+    except Exception:
+        return None
+
+
+@app.get("/reddit/trending")
+def reddit_trending(limit: int = 25):
+    """Most talked-about stocks on Reddit (via ApeWisdom + sentiment from WSB)."""
+    cache_key = f"reddit_trending_{limit}"
+    cached = _reddit_cache.get(cache_key)
+    if cached and _time.time() - cached["_ts"] < _REDDIT_CACHE_TTL:
+        return cached["data"]
+
+    # 1. Get ranked mentions from ApeWisdom
+    try:
+        r = requests.get(
+            "https://apewisdom.io/api/v1.0/filter/all-stocks/page/1",
+            headers={"User-Agent": "ChabAlgo/1.0"},
+            timeout=8,
+        )
+        if r.status_code != 200:
+            raise HTTPException(status_code=502, detail="Failed to fetch Reddit data")
+        raw = r.json().get("results", [])[:limit]
+    except requests.RequestException:
+        raise HTTPException(status_code=502, detail="Reddit data source unavailable")
+
+    # 2. Enrich top 10 with sentiment (parallel)
+    sentiment_map = {}
+    top_for_sentiment = [s["ticker"] for s in raw[:10]]
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        futures = {pool.submit(_reddit_sentiment_from_posts, t): t for t in top_for_sentiment}
+        for f in as_completed(futures):
+            t = futures[f]
+            try:
+                result = f.result(timeout=10)
+                if result:
+                    sentiment_map[t] = result
+            except Exception:
+                pass
+
+    # 3. Build response
+    stocks = []
+    for item in raw:
+        ticker = item.get("ticker", "")
+        mentions_now = item.get("mentions", 0)
+        mentions_24h = item.get("mentions_24h_ago", 0)
+        rank_now = item.get("rank", 0)
+        rank_24h = item.get("rank_24h_ago", 0)
+
+        # Compute change metrics
+        mention_change = mentions_now - mentions_24h if mentions_24h else 0
+        mention_change_pct = round((mention_change / mentions_24h) * 100, 1) if mentions_24h and mentions_24h > 0 else 0.0
+        rank_change = (rank_24h - rank_now) if rank_24h and rank_now else 0  # positive = moved up
+
+        sent = sentiment_map.get(ticker)
+
+        import html as _html
+        stocks.append({
+            "rank": rank_now,
+            "ticker": ticker,
+            "name": _html.unescape(item.get("name", "")),
+            "mentions": mentions_now,
+            "mentions_24h_ago": mentions_24h,
+            "mention_change": mention_change,
+            "mention_change_pct": mention_change_pct,
+            "upvotes": item.get("upvotes", 0),
+            "rank_change": rank_change,
+            "sentiment": sent,
+        })
+
+    data = _sanitize({"stocks": stocks, "source": "ApeWisdom + Reddit/WSB", "updated": datetime.datetime.now().isoformat()})
+    _reddit_cache[cache_key] = {"_ts": _time.time(), "data": data}
+    return data
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
