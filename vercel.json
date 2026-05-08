@@ -12,5 +12,83 @@
   },
   "env": {
     "NEXT_PUBLIC_API_URL": "/api"
-  }
+  },
+  "headers": [
+    {
+      "source": "/api/heatmap(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=180, stale-while-revalidate=600" }]
+    },
+    {
+      "source": "/api/daily-briefing(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=90, stale-while-revalidate=300" }]
+    },
+    {
+      "source": "/api/quotes/batch(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=30, stale-while-revalidate=120" }]
+    },
+    {
+      "source": "/api/global/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=300, stale-while-revalidate=1800" }]
+    },
+    {
+      "source": "/api/13f/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=3600, stale-while-revalidate=86400" }]
+    },
+    {
+      "source": "/api/macro/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=600, stale-while-revalidate=3600" }]
+    },
+    {
+      "source": "/api/fear-greed-v2(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=300, stale-while-revalidate=1800" }]
+    },
+    {
+      "source": "/api/reddit/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=600, stale-while-revalidate=1800" }]
+    },
+    {
+      "source": "/api/etf/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=1800, stale-while-revalidate=7200" }]
+    },
+    {
+      "source": "/api/crypto/markets(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=60, stale-while-revalidate=300" }]
+    },
+    {
+      "source": "/api/crypto/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=180, stale-while-revalidate=900" }]
+    },
+    {
+      "source": "/api/sector-deepdive/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=600, stale-while-revalidate=3600" }]
+    },
+    {
+      "source": "/api/analyze/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=60, stale-while-revalidate=300" }]
+    },
+    {
+      "source": "/api/vision/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=300, stale-while-revalidate=1800" }]
+    },
+    {
+      "source": "/api/swot/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=600, stale-while-revalidate=3600" }]
+    },
+    {
+      "source": "/api/fair-value/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=600, stale-while-revalidate=3600" }]
+    },
+    {
+      "source": "/api/sec/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=1800, stale-while-revalidate=7200" }]
+    },
+    {
+      "source": "/api/economic-calendar(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=1800, stale-while-revalidate=7200" }]
+    },
+    {
+      "source": "/api/search(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=600, stale-while-revalidate=3600" }]
+    }
+  ]
 }
