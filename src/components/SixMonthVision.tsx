@@ -201,7 +201,7 @@ export default function SixMonthVision({ ticker }: { ticker: string }) {
       {/* Entry analysis */}
       <div className="bg-subtle/50 border-l-2 border-accent/30 pl-3 pr-3 py-2.5 mb-4">
         <div className="text-accent/60 text-[9px] font-semibold tracking-[0.15em] mb-1.5">
-          ANALYSE D&apos;ENTRÉE
+          ENTRY ANALYSIS
         </div>
         <p className="text-[11px] text-muted leading-[1.7]">
           {data.entry_analysis}

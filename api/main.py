@@ -1989,7 +1989,7 @@ def six_month_vision(ticker: str):
         pass
 
     factors.append({
-        "name": "Trajectoire Momentum",
+        "name": "Momentum Trajectory",
         "weight": 20,
         "score": momentum_score,
         "detail": momentum_detail,
@@ -2009,7 +2009,7 @@ def six_month_vision(ticker: str):
         catalyst_detail = catalysts
 
     factors.append({
-        "name": "Catalyseurs Sectoriels",
+        "name": "Sector Catalysts",
         "weight": 25,
         "score": catalyst_score,
         "detail": catalyst_detail,
@@ -2023,22 +2023,22 @@ def six_month_vision(ticker: str):
         growth_detail["revenue_growth_yoy"] = rev_growth
         if rev_growth > 50:
             growth_score = 90
-            growth_detail["assessment"] = "Hyper-croissance — la demande explose"
+            growth_detail["assessment"] = "Hyper-growth — demand is exploding"
         elif rev_growth > 25:
             growth_score = 75
-            growth_detail["assessment"] = "Forte croissance — le business scale rapidement"
+            growth_detail["assessment"] = "Strong growth — business is scaling fast"
         elif rev_growth > 10:
             growth_score = 60
-            growth_detail["assessment"] = "Croissance solide — expansion régulière"
+            growth_detail["assessment"] = "Solid growth — steady expansion"
         elif rev_growth > 0:
             growth_score = 45
-            growth_detail["assessment"] = "Croissance modeste — pas de catalyseur de revenus évident"
+            growth_detail["assessment"] = "Modest growth — no clear revenue catalyst"
         else:
             growth_score = 25
-            growth_detail["assessment"] = "Revenus en déclin — risque fondamental"
+            growth_detail["assessment"] = "Revenue declining — fundamental risk"
 
     factors.append({
-        "name": "Trajectoire Revenus",
+        "name": "Revenue Trajectory",
         "weight": 20,
         "score": growth_score,
         "detail": growth_detail,
@@ -2059,7 +2059,7 @@ def six_month_vision(ticker: str):
             tech_score = 72
             if rsi > 70:
                 tech_score = 60  # overbought risk
-                tech_detail["warning"] = "RSI surachat — risque de pullback court terme"
+                tech_detail["warning"] = "RSI overbought — short-term pullback risk"
             elif 40 < rsi < 60:
                 tech_score = 78  # ideal zone
         elif technicals.get("price_vs_ma50") == "below" and technicals.get("price_vs_ma200") == "below":
@@ -2070,7 +2070,7 @@ def six_month_vision(ticker: str):
             tech_score = 55
 
     factors.append({
-        "name": "Setup Technique",
+        "name": "Technical Setup",
         "weight": 15,
         "score": tech_score,
         "detail": tech_detail,
@@ -2090,27 +2090,27 @@ def six_month_vision(ticker: str):
 
         if pe_compression > 20:
             val_score = 75
-            val_detail["assessment"] = "Forte compression PE attendue — les earnings rattrapent la valorisation"
+            val_detail["assessment"] = "Strong PE compression expected — earnings catching up to valuation"
         elif pe_compression > 5:
             val_score = 62
-            val_detail["assessment"] = "Compression PE modérée — valorisation en amélioration"
+            val_detail["assessment"] = "Moderate PE compression — valuation improving"
         elif pe < 20:
             val_score = 65
-            val_detail["assessment"] = "Valorisation raisonnable — marge de sécurité présente"
+            val_detail["assessment"] = "Reasonable valuation — margin of safety present"
         else:
             val_score = 45
-            val_detail["assessment"] = "Valorisation tendue — peu de marge d'erreur"
+            val_detail["assessment"] = "Stretched valuation — little margin for error"
     elif pe is None and rev_growth is not None and rev_growth > 30:
         # Pre-profit high growth (like FLY, PL, ASTS)
         val_score = 55
-        val_detail["assessment"] = "Pre-profit mais forte croissance — valorisation basée sur le potentiel et les catalyseurs sectoriels"
-        val_detail["note"] = "Pour les entreprises pre-profit dans des secteurs à catalyseur (SpaceX IPO, expansion IA), la valorisation se justifie par le momentum sectoriel plutôt que par les multiples traditionnels"
+        val_detail["assessment"] = "Pre-profit but strong growth — valuation based on potential and sector catalysts"
+        val_detail["note"] = "For pre-profit companies in catalyst-rich sectors (SpaceX IPO, AI expansion), valuation is justified by sector momentum rather than traditional multiples"
     elif pe is None:
         val_score = 40
         val_detail["assessment"] = "No PE — unprofitable business, speculative valuation"
 
     factors.append({
-        "name": "Risque/Rendement Valorisation",
+        "name": "Valuation Risk/Reward",
         "weight": 20,
         "score": val_score,
         "detail": val_detail,
