@@ -10,7 +10,7 @@ export default function Header({ data }: { data: AnalysisData }) {
   const isUp = price.change >= 0;
 
   return (
-    <div className="premium-card rounded-xl p-6">
+    <div className="premium-card rounded-xl p-4 sm:p-6">
       {/* Top row: ticker + name */}
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-3">
@@ -30,9 +30,9 @@ export default function Header({ data }: { data: AnalysisData }) {
       </div>
 
       {/* Price row */}
-      <div className="flex items-end gap-6 mt-4 flex-wrap">
+      <div className="flex items-end gap-3 sm:gap-6 mt-4 flex-wrap">
         <div>
-          <div className="text-3xl font-bold text-foreground tabular-nums tracking-tight">
+          <div className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums tracking-tight">
             {currencySymbol}{formatPrice(price.price)}
           </div>
           <div className={`flex items-center gap-2 mt-1 ${changeColor}`}>
@@ -48,8 +48,8 @@ export default function Header({ data }: { data: AnalysisData }) {
           </div>
         </div>
 
-        {/* OHLC strip */}
-        <div className="flex gap-5 text-xs text-muted ml-auto flex-wrap">
+        {/* OHLC strip — wraps to 2-column grid on mobile */}
+        <div className="grid grid-cols-3 sm:flex sm:gap-5 gap-3 text-xs text-muted w-full sm:w-auto sm:ml-auto">
           {[
             { label: "Open", val: price.open },
             { label: "High", val: price.high },
@@ -58,12 +58,12 @@ export default function Header({ data }: { data: AnalysisData }) {
           ].map((item) => (
             <div key={item.label} className="text-center">
               <div className="text-muted/40 text-[10px] mb-0.5">{item.label}</div>
-              <div className="text-foreground/80 font-medium tabular-nums">{formatPrice(item.val)}</div>
+              <div className="text-foreground/80 font-medium tabular-nums text-[11px] sm:text-xs">{formatPrice(item.val)}</div>
             </div>
           ))}
           <div className="text-center">
             <div className="text-muted/40 text-[10px] mb-0.5">Mkt Cap</div>
-            <div className="text-foreground/80 font-medium">{formatLargeNumber(profile.market_cap)}</div>
+            <div className="text-foreground/80 font-medium text-[11px] sm:text-xs">{formatLargeNumber(profile.market_cap)}</div>
           </div>
         </div>
       </div>

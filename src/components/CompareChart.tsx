@@ -200,7 +200,7 @@ export default function CompareChart() {
         {loading && <span className="text-[10px] text-muted animate-pulse">Loading...</span>}
       </div>
 
-      <div ref={containerRef} className="w-full h-[380px]" />
+      <div ref={containerRef} className="w-full h-[280px] sm:h-[380px]" />
     </div>
   );
 }

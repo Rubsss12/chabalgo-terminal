@@ -271,7 +271,7 @@ export default function ProChart({ data, ticker }: ProChartProps) {
           </div>
         </div>
       </div>
-      <div ref={containerRef} className="w-full h-[420px]" />
+      <div ref={containerRef} className="w-full h-[280px] sm:h-[420px]" />
       {showMA && (
         <div className="px-4 py-2 border-t border-border flex items-center gap-4 text-[10px] text-muted">
           <div className="flex items-center gap-1.5">

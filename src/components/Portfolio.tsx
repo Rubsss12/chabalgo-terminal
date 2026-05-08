@@ -59,7 +59,7 @@ export default function Portfolio() {
   };
 
   return (
-    <div className="fixed right-0 top-0 h-full z-50 flex">
+    <div className="fixed right-0 top-0 h-full z-30 hidden lg:flex">
       {/* Toggle button */}
       <button
         onClick={() => setOpen(!open)}

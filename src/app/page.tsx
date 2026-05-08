@@ -236,27 +236,27 @@ export default function Home() {
       {/* TOP NAV BAR                                 */}
       {/* ═══════════════════════════════════════════ */}
       <nav className="sticky top-0 z-50 glass border-b border-border">
-        <div className="max-w-[1440px] mx-auto px-6 h-14 flex items-center justify-between">
+        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4">
           {/* Logo */}
-          <button onClick={handleClose} className="flex items-center gap-3 group">
+          <button onClick={handleClose} className="flex items-center gap-2 sm:gap-3 group flex-shrink-0">
             <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center group-hover:bg-accent/20 group-hover:border-accent/30 transition-all">
               <span className="text-accent font-bold text-sm">C</span>
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-foreground text-[15px] font-semibold tracking-tight">ChabAlgo</span>
-              <span className="text-muted text-[11px] font-medium">Terminal</span>
+              <span className="text-muted text-[11px] font-medium hidden xs:inline sm:inline">Terminal</span>
             </div>
           </button>
 
           {/* Center search — visible everywhere */}
-          <div className="hidden md:block flex-1 max-w-lg mx-8">
+          <div className="hidden md:block flex-1 max-w-lg mx-4 lg:mx-8">
             <SearchBar onSearch={handleSearch} loading={loading} />
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-5">
             {lastRefresh && data && (
-              <div className="flex items-center gap-2 text-xs text-muted bg-green/5 border border-green/15 px-3 py-1.5 rounded-lg">
+              <div className="hidden lg:flex items-center gap-2 text-xs text-muted bg-green/5 border border-green/15 px-3 py-1.5 rounded-lg">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green opacity-50"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green"></span>
@@ -266,11 +266,11 @@ export default function Home() {
                 <span className="tabular-nums">{lastRefresh.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
               </div>
             )}
-            <div className="flex items-center gap-2 text-xs">
+            <div className="hidden sm:flex items-center gap-2 text-xs">
               <span className={`w-2 h-2 rounded-full ${isMarketOpen() ? "bg-green shadow-[0_0_6px_rgba(45,139,78,0.4)]" : "bg-red/40"}`} />
               <span className="text-muted font-medium">{isMarketOpen() ? "Market Open" : "Market Closed"}</span>
             </div>
-            <div className="hidden sm:block text-muted text-xs tabular-nums">
+            <div className="hidden lg:block text-muted text-xs tabular-nums">
               {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
             </div>
             <ThemeToggle />
@@ -281,7 +281,7 @@ export default function Home() {
         {/* Ticker strip */}
         {indices.length > 0 && (
           <div className="border-t border-border/60 overflow-hidden bg-background/40">
-            <div className="flex items-center gap-8 px-6 py-1.5 ticker-scroll" style={{ width: "max-content" }}>
+            <div className="flex items-center gap-5 sm:gap-8 px-3 sm:px-6 py-1.5 ticker-scroll" style={{ width: "max-content" }}>
               {[...indices, ...indices].map((idx, i) => (
                 <div key={`${idx.name}-${i}`} className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-[11px] text-muted font-medium">{idx.name}</span>
@@ -338,7 +338,7 @@ export default function Home() {
       {/* STOCK ANALYSIS VIEW                         */}
       {/* ═══════════════════════════════════════════ */}
       {data && (
-        <div className="max-w-[1280px] mx-auto px-6 pb-16 pt-6 space-y-5 fade-in">
+        <div className="max-w-[1280px] mx-auto px-3 sm:px-6 pb-16 pt-6 space-y-5 fade-in">
           {/* Breadcrumb nav */}
           <div className="flex items-center justify-between">
             <button onClick={handleClose} className="flex items-center gap-2 text-muted hover:text-accent transition-colors text-sm group">
@@ -495,7 +495,7 @@ export default function Home() {
           {/* Hero section — compact */}
           <div className="relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-accent/3 via-transparent to-transparent pointer-events-none" />
-            <div className="max-w-[1280px] mx-auto px-6 pt-6 pb-4 text-center relative">
+            <div className="max-w-[1280px] mx-auto px-3 sm:px-6 pt-6 pb-4 text-center relative">
               <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-tight">
                 Institutional-grade research,{" "}
                 <span className="gradient-text">built for everyone.</span>
@@ -512,19 +512,19 @@ export default function Home() {
           </div>
 
           {/* Tab navigation */}
-          <div className="max-w-[1280px] mx-auto px-6">
-            <div className="flex items-center gap-1 border-b border-border">
+          <div className="max-w-[1280px] mx-auto px-3 sm:px-6">
+            <div className="flex items-center gap-1 border-b border-border overflow-x-auto scrollbar-none">
               {TABS.map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => setLandingTab(tab.key)}
-                  className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all border-b-2 -mb-px rounded-t-lg ${
+                  className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-all border-b-2 -mb-px rounded-t-lg whitespace-nowrap flex-shrink-0 ${
                     landingTab === tab.key
                       ? "text-accent border-accent bg-accent/5"
                       : "text-muted border-transparent hover:text-foreground hover:bg-card/50"
                   }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d={tab.icon} />
                   </svg>
                   {tab.label}
@@ -534,7 +534,7 @@ export default function Home() {
           </div>
 
           {/* Tab content */}
-          <div className="max-w-[1280px] mx-auto px-6 pt-8 pb-16 tab-content-enter" key={landingTab}>
+          <div className="max-w-[1280px] mx-auto px-3 sm:px-6 pt-6 sm:pt-8 pb-16 tab-content-enter" key={landingTab}>
 
             {/* ═══════ SECTORS TAB ═══════ */}
             {landingTab === "sectors" && (
