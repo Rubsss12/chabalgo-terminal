@@ -27,6 +27,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# When running on Vercel, all requests come in as /api/<route>. Strip the prefix
+# so the existing routes (/crypto/markets, /analyze/{ticker}, etc.) keep working.
+@app.middleware("http")
+async def _strip_api_prefix(request, call_next):
+    path = request.scope.get("path", "")
+    if path.startswith("/api/"):
+        request.scope["path"] = path[4:]
+        if request.scope.get("raw_path"):
+            request.scope["raw_path"] = request.scope["raw_path"][4:]
+    elif path == "/api":
+        request.scope["path"] = "/"
+    return await call_next(request)
+
+
+# Health check for debugging deployments
+@app.get("/__health__")
+def _health():
+    import sys as _sys
+    return {
+        "ok": True,
+        "python_version": _sys.version.split()[0],
+        "has_finnhub_key": bool(os.getenv("FINNHUB_API_KEY")),
+        "vercel_region": os.getenv("VERCEL_REGION"),
+    }
+
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "")
 ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "")
 
