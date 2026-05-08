@@ -21,10 +21,7 @@ app = FastAPI(title="ChabAlgo Terminal API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://rubsss12.github.io",
-    ],
+    allow_origin_regex=r"https://.*\.vercel\.app|https://rubsss12\.github\.io|http://localhost:3000",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
