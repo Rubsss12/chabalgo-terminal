@@ -280,7 +280,6 @@ export default function Home() {
               {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
             </div>
             <ThemeToggle />
-            <Rankings onSelectTicker={handleSearch} />
           </div>
         </div>
 
@@ -675,6 +674,22 @@ export default function Home() {
                       <div className="text-xs text-muted mt-1">{card.desc}</div>
                     </div>
                   ))}
+                </div>
+
+                {/* Top Picks dropdown — was previously in nav */}
+                <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.7}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M3 8h12M3 12h18M3 16h8M3 20h14" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-foreground">Top Picks</div>
+                      <div className="text-[11px] text-muted">Best long-term and short-term scoring stocks across our universe</div>
+                    </div>
+                  </div>
+                  <Rankings onSelectTicker={handleSearch} />
                 </div>
 
                 <RedditTracker onSearch={handleSearch} />
