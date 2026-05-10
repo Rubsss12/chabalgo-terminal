@@ -13,8 +13,34 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ChabAlgo Terminal",
-  description: "Luxury financial analysis terminal",
+  title: "ChabAlgo Terminal — Institutional research, built for everyone",
+  description:
+    "A free Bloomberg-style terminal for serious investors. Live stock + crypto data, AI bottleneck explorer, 13F tracker, sector deep dives, Reddit sentiment — all in one place.",
+  keywords: [
+    "stock terminal",
+    "Bloomberg alternative",
+    "AI stocks",
+    "stock analysis",
+    "crypto terminal",
+    "13F filings",
+    "sector analysis",
+    "ChabAlgo",
+  ],
+  openGraph: {
+    title: "ChabAlgo Terminal",
+    description:
+      "Live stocks, crypto, AI bottlenecks, 13F tracker, sector deep dives. Free.",
+    type: "website",
+    url: "https://chabalgo-terminal.vercel.app",
+    siteName: "ChabAlgo Terminal",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ChabAlgo Terminal",
+    description:
+      "Live stocks, crypto, AI bottlenecks, 13F tracker, sector deep dives. Free.",
+  },
+  themeColor: "#F37021",
 };
 
 export default function RootLayout({

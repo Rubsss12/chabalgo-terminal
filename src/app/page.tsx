@@ -67,6 +67,10 @@ const CompareChart = dynamic(() => import("@/components/CompareChart"), { ssr: f
 const MorningBrief = dynamic(() => import("@/components/MorningBrief"), { ssr: false });
 const ThemeToggle = dynamic(() => import("@/components/ThemeToggle"), { ssr: false });
 const AIBottlenecks = dynamic(() => import("@/components/AIBottlenecks"), { ssr: false });
+const MarketingHero = dynamic(() => import("@/components/MarketingHero"), { ssr: false });
+const FeatureShowcase = dynamic(() => import("@/components/FeatureShowcase"), { ssr: false });
+const PricingCTA = dynamic(() => import("@/components/PricingCTA"), { ssr: false });
+const Footer = dynamic(() => import("@/components/Footer"), { ssr: false });
 const AlertsManager = dynamic(() => import("@/components/PriceAlerts"), { ssr: false });
 const AlertWatcher = dynamic(() => import("@/components/PriceAlerts").then((m) => m.AlertWatcher), { ssr: false });
 
@@ -494,24 +498,8 @@ export default function Home() {
       {!data && !loading && !error && !deepDiveSector && (
         <div className="fade-in">
 
-          {/* Hero section — compact */}
-          <div className="relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-accent/3 via-transparent to-transparent pointer-events-none" />
-            <div className="max-w-[1280px] mx-auto px-3 sm:px-6 pt-6 pb-4 text-center relative">
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-tight">
-                Institutional-grade research,{" "}
-                <span className="gradient-text">built for everyone.</span>
-              </h1>
-              <p className="text-muted text-[11px] sm:text-xs mt-1.5 max-w-lg mx-auto">
-                Sectors, AI valuations, insider flow, macro, crypto, global markets — one terminal.
-              </p>
-
-              {/* Search — mobile only (desktop has it in nav) */}
-              <div className="md:hidden mt-4 max-w-md mx-auto">
-                <SearchBar onSearch={handleSearch} loading={loading} />
-              </div>
-            </div>
-          </div>
+          {/* Marketing hero with rotating tagline + popular tickers */}
+          <MarketingHero onSearch={handleSearch} />
 
           {/* Tab navigation */}
           <div className="max-w-[1280px] mx-auto px-3 sm:px-6">
@@ -716,12 +704,14 @@ export default function Home() {
             )}
           </div>
 
-          {/* Footer */}
-          <footer className="border-t border-border py-6 text-center">
-            <div className="text-xs text-muted/40">
-              ChabAlgo Terminal &middot; Data: Finnhub · Yahoo Finance · CoinGecko · FRED · SEC EDGAR · ApeWisdom · Reddit &middot; Not financial advice
-            </div>
-          </footer>
+          {/* Feature showcase — pitch what's inside */}
+          <FeatureShowcase />
+
+          {/* Pricing — Free vs Pro positioning */}
+          <PricingCTA />
+
+          {/* Polished footer */}
+          <Footer onTabSelect={(t) => setLandingTab(t as LandingTab)} onSearch={handleSearch} />
         </div>
       )}
 
