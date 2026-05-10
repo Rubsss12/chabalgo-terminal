@@ -72,7 +72,7 @@ const AlertWatcher = dynamic(() => import("@/components/PriceAlerts").then((m) =
 
 import { API_BASE } from "../lib/apiBase";
 
-type LandingTab = "sectors" | "overview" | "crypto" | "screeners" | "invest";
+type LandingTab = "sectors" | "overview" | "ai" | "crypto" | "screeners" | "invest";
 
 interface MiniIndex {
   name: string;
@@ -135,7 +135,7 @@ export default function Home() {
     } else if (c) {
       setLandingTab("crypto");
       setCryptoCoinId(c);
-    } else if (tab && ["sectors", "overview", "crypto", "screeners", "invest"].includes(tab)) {
+    } else if (tab && ["sectors", "overview", "ai", "crypto", "screeners", "invest"].includes(tab)) {
       setLandingTab(tab);
     }
     // Listen for back/forward
@@ -225,6 +225,7 @@ export default function Home() {
   const TABS: { key: LandingTab; label: string; icon: string }[] = [
     { key: "sectors", label: "Sectors", icon: "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" },
     { key: "overview", label: "Overview", icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" },
+    { key: "ai", label: "AI Bottlenecks", icon: "M13 10V3L4 14h7v7l9-11h-7z" },
     { key: "crypto", label: "Crypto", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 10v1m6-6a6 6 0 11-12 0 6 6 0 0112 0z" },
     { key: "screeners", label: "Screeners", icon: "M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" },
     { key: "invest", label: "Invest", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
@@ -601,16 +602,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* AI value-chain bottlenecks */}
-                <div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <h3 className="text-sm font-semibold text-foreground">AI Bottlenecks</h3>
-                    <span className="text-[10px] text-muted/60">— where the supply chain is choking</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                  <AIBottlenecks onSearch={handleSearch} />
-                </div>
-
                 {/* Market pulse */}
                 <div>
                   <div className="flex items-center gap-3 mb-4">
@@ -645,6 +636,29 @@ export default function Home() {
                 </div>
                 <GlobalMarkets onSearch={handleSearch} />
                 <EconomicCalendar />
+              </div>
+            )}
+
+            {/* ═══════ AI BOTTLENECKS TAB ═══════ */}
+            {landingTab === "ai" && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-br from-accent/8 via-card to-card border border-accent/15 rounded-xl p-5 sm:p-6">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-accent/15 border border-accent/20 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-lg sm:text-xl font-bold text-foreground mb-1.5">AI Value-Chain Bottlenecks</h2>
+                      <p className="text-xs sm:text-sm text-muted leading-relaxed max-w-2xl">
+                        The market obsesses over NVIDIA but the next 3-5 years of AI returns may come from less-crowded names that hold critical chokepoints in the supply chain.
+                        Each bottleneck below has a few dominant players who capture disproportionate value because demand far exceeds supply elasticity.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <AIBottlenecks onSearch={handleSearch} />
               </div>
             )}
 
