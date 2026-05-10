@@ -66,6 +66,7 @@ const InvestorTracker = dynamic(() => import("@/components/InvestorTracker"), { 
 const CompareChart = dynamic(() => import("@/components/CompareChart"), { ssr: false });
 const MorningBrief = dynamic(() => import("@/components/MorningBrief"), { ssr: false });
 const ThemeToggle = dynamic(() => import("@/components/ThemeToggle"), { ssr: false });
+const AIBottlenecks = dynamic(() => import("@/components/AIBottlenecks"), { ssr: false });
 const AlertsManager = dynamic(() => import("@/components/PriceAlerts"), { ssr: false });
 const AlertWatcher = dynamic(() => import("@/components/PriceAlerts").then((m) => m.AlertWatcher), { ssr: false });
 
@@ -598,6 +599,16 @@ export default function Home() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* AI value-chain bottlenecks */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <h3 className="text-sm font-semibold text-foreground">AI Bottlenecks</h3>
+                    <span className="text-[10px] text-muted/60">— where the supply chain is choking</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  <AIBottlenecks onSearch={handleSearch} />
                 </div>
 
                 {/* Market pulse */}

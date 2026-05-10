@@ -7926,6 +7926,284 @@ def get_13f_holdings(investor_key: str, limit: int = 25):
         raise HTTPException(status_code=500, detail=f"13F fetch failed: {str(e)[:120]}")
 
 
+# ══════════════════════════════════════════════════════════════
+#  AI BOTTLENECKS — value-chain choke points
+# ══════════════════════════════════════════════════════════════
+#
+# The thesis: AI infrastructure is bottlenecked at specific physical and
+# manufacturing nodes. Whoever controls these nodes captures disproportionate
+# value because the demand curve far exceeds supply elasticity.
+#
+# Each bottleneck has:
+#   - 1-3 leaders that dominate (often >50% market share)
+#   - 1-3 challengers that could disrupt or capture share
+#   - Supply concentration risk (geographic, geopolitical, technical)
+#   - Time horizon for the squeeze
+#
+# This is ALPHA. The market obsesses over NVDA but the next 3-5 years of
+# returns may come from these less-crowded names that hold critical chokepoints.
+
+AI_BOTTLENECKS = [
+    {
+        "id": "optical-transceivers",
+        "name": "Optical Transceivers (800G / 1.6T)",
+        "category": "Photonics",
+        "criticality": 95,
+        "horizon": "2025-2027",
+        "thesis": "Every GPU cluster needs thousands of optical transceivers to move data between chips. The shift from 400G→800G→1.6T is happening in 18-month cycles. Each generation roughly doubles ASPs and unit volumes scale linearly with GPU deployment.",
+        "supply_concentration": "Concentrated — 4 companies own ~80% of high-speed market. Manufacturing in Thailand/Malaysia.",
+        "leaders": [
+            {"ticker": "COHR", "name": "Coherent", "share": "~25%", "moat": "II-VI merger gave full vertical: lasers + optics + assembly"},
+            {"ticker": "LITE", "name": "Lumentum", "share": "~20%", "moat": "Vertically integrated DML/EML lasers, key supplier to Cisco/Arista"},
+            {"ticker": "AAOI", "name": "Applied Optoelectronics", "share": "~10%", "moat": "Microsoft Azure 800G transceiver design win — ramping hard in 2025"},
+        ],
+        "challengers": [
+            {"ticker": "FN", "name": "Fabrinet", "thesis": "Contract manufacturer for many — riding the wave without product risk"},
+            {"ticker": "POET", "name": "POET Technologies", "thesis": "Photonic integration platform — speculative, but if 200G/lane scales, they win"},
+        ],
+        "risks": ["Silicon photonics from Intel/Cisco could disintermediate", "China oversupply in 400G could pressure margins"],
+    },
+    {
+        "id": "hbm-memory",
+        "name": "HBM (High Bandwidth Memory)",
+        "category": "Memory",
+        "criticality": 98,
+        "horizon": "2024-2026",
+        "thesis": "Every NVIDIA H100/H200/B200 needs HBM stacks. SK Hynix sold out HBM3E through 2025. HBM4 ramps 2026 with 2x bandwidth. Memory cost as % of GPU BoM has gone from 10% to 50%+ — the value is migrating to memory makers.",
+        "supply_concentration": "Oligopoly — 3 companies. Qualified supplier list at NVIDIA is tiny.",
+        "leaders": [
+            {"ticker": "000660.KS", "name": "SK Hynix", "share": "~50%", "moat": "First to qualify HBM3E for NVIDIA. 1.5-year tech lead over Micron."},
+            {"ticker": "005930.KS", "name": "Samsung Electronics", "share": "~35%", "moat": "Massive capex but yield issues on HBM3E delayed qualification"},
+            {"ticker": "MU", "name": "Micron", "share": "~12%", "moat": "Late but qualifying HBM3E aggressively. Sold out through 2025."},
+        ],
+        "challengers": [],
+        "risks": ["GDDR7 could partially substitute for inference workloads", "On-package HBM4E redesign may shake up share"],
+    },
+    {
+        "id": "advanced-packaging",
+        "name": "Advanced Packaging (CoWoS / SoIC)",
+        "category": "Semiconductor Manufacturing",
+        "criticality": 99,
+        "horizon": "2024-2027",
+        "thesis": "TSMC's CoWoS-S packaging is the literal bottleneck for every NVIDIA GPU. TSMC is doubling capacity yearly but still can't meet demand. The packaging step has become more constrained than the leading-edge wafer itself.",
+        "supply_concentration": "TSMC monopoly on advanced 2.5D/3D packaging at scale. Samsung + Intel trying to catch up.",
+        "leaders": [
+            {"ticker": "TSM", "name": "TSMC", "share": "~95% (CoWoS)", "moat": "Decades of process expertise, customer lock-in via co-design"},
+        ],
+        "challengers": [
+            {"ticker": "AMAT", "name": "Applied Materials", "thesis": "Equipment supplier for advanced packaging — picks-and-shovels play"},
+            {"ticker": "ASE Tech (3711.TW)", "name": "ASE Technology", "thesis": "OSAT giant moving up the value chain into 2.5D"},
+            {"ticker": "AMKR", "name": "Amkor", "thesis": "Apple's packaging partner. CoWoS-like capabilities ramping."},
+        ],
+        "risks": ["TSMC capacity expansion faster than expected", "Co-packaged optics could change packaging requirements"],
+    },
+    {
+        "id": "euv-lithography",
+        "name": "EUV Lithography",
+        "category": "Semiconductor Equipment",
+        "criticality": 100,
+        "horizon": "Permanent moat",
+        "thesis": "Without EUV you can't manufacture sub-7nm chips. ASML is a literal monopoly. Each High-NA EUV machine is $400M+ and there's a multi-year backlog. Every advanced AI chip in the world depends on this single Dutch company.",
+        "supply_concentration": "Pure monopoly. ASML 100% of EUV. Carl Zeiss 100% of the optics inside ASML.",
+        "leaders": [
+            {"ticker": "ASML", "name": "ASML Holding", "share": "100% (EUV)", "moat": "30+ years of R&D, hundreds of patents, unique supply chain (Zeiss optics)"},
+        ],
+        "challengers": [
+            {"ticker": "6920.T", "name": "Lasertec", "thesis": "Only company making EUV mask inspection equipment — sub-monopoly"},
+            {"ticker": "8035.T", "name": "Tokyo Electron", "thesis": "Adjacent equipment (track, etch) needed for EUV process"},
+        ],
+        "risks": ["China-US tensions could limit ASML exports (already partially blocked)", "Customer concentration in TSMC/Samsung/Intel"],
+    },
+    {
+        "id": "glass-fiber",
+        "name": "Optical Glass Fiber + Datacenter Cabling",
+        "category": "Photonics",
+        "criticality": 75,
+        "horizon": "2024-2030",
+        "thesis": "AI datacenters need 5-10x more fiber per square meter than traditional. Single-mode fiber for inter-rack, multi-mode for intra-rack. The shift to optical interconnects (vs copper) is structural and accelerating with co-packaged optics.",
+        "supply_concentration": "Moderate — 5-6 major players. Glass preform manufacturing is the choke point.",
+        "leaders": [
+            {"ticker": "GLW", "name": "Corning", "share": "~30%", "moat": "Owns glass preform tech, vertically integrated. AI datacenter demand specifically called out as a growth driver."},
+            {"ticker": "PRYSMIANS.MI", "name": "Prysmian (Italy)", "share": "~20%", "moat": "Largest cable maker globally, datacenter division growing"},
+            {"ticker": "CIEN", "name": "Ciena", "share": "Networking gear", "moat": "DCI (Datacenter Interconnect) optical systems — captures premium for AI traffic"},
+        ],
+        "challengers": [
+            {"ticker": "5802.T", "name": "Sumitomo Electric", "thesis": "Japanese fiber giant, key supplier to hyperscalers"},
+            {"ticker": "5803.T", "name": "Fujikura", "thesis": "Bend-insensitive fibers, leader in submarine cable"},
+        ],
+        "risks": ["Co-packaged optics could reduce inter-rack fiber needs", "Commoditization in standard fiber vs specialty"],
+    },
+    {
+        "id": "power-datacenters",
+        "name": "Datacenter Power & Cooling",
+        "category": "Infrastructure",
+        "criticality": 90,
+        "horizon": "2024-2030",
+        "thesis": "AI datacenters consume 10-50x more power per square meter than traditional. The grid can't handle it. Liquid cooling is mandatory above 50kW/rack. Companies controlling power distribution + cooling capture the AI buildout indirectly with less hype.",
+        "supply_concentration": "Fragmented but a few leaders. PDU + UPS are concentrated.",
+        "leaders": [
+            {"ticker": "VRT", "name": "Vertiv", "share": "Dominant", "moat": "Liquid cooling + power distribution — full datacenter stack. AI orderbook 2x in 2024."},
+            {"ticker": "ETN", "name": "Eaton", "share": "Major", "moat": "Power management for hyperscale, datacenter backlog at all-time highs"},
+            {"ticker": "SU.PA", "name": "Schneider Electric", "share": "Major", "moat": "EcoStruxure for AI factories, full power chain"},
+        ],
+        "challengers": [
+            {"ticker": "SMCI", "name": "Super Micro", "thesis": "Liquid-cooled servers — controversial but riding the wave"},
+            {"ticker": "VST", "name": "Vistra", "thesis": "Nuclear+gas baseload power — Microsoft 3-Mile Island deal validates thesis"},
+            {"ticker": "CEG", "name": "Constellation Energy", "thesis": "Largest US nuclear operator — AI signed PPAs"},
+        ],
+        "risks": ["Power constraints could slow AI buildout entirely", "Regulatory delays on grid expansion"],
+    },
+    {
+        "id": "ai-asics",
+        "name": "Custom AI ASICs (TPU / Trainium / Maia)",
+        "category": "Semiconductors",
+        "criticality": 85,
+        "horizon": "2024-2027",
+        "thesis": "Hyperscalers (Google, AWS, MSFT, Meta) are designing custom silicon to escape NVIDIA pricing. Broadcom + Marvell are the ASIC partners — they capture the IP integration value at $20-50B+ TAM growing 30%/yr.",
+        "supply_concentration": "2 main ASIC partners (AVGO + MRVL). TSMC for fab.",
+        "leaders": [
+            {"ticker": "AVGO", "name": "Broadcom", "share": "~70% (custom AI)", "moat": "Google TPU + Meta MTIA + ByteDance custom — multi-billion programs each"},
+            {"ticker": "MRVL", "name": "Marvell", "share": "~25%", "moat": "AWS Trainium + Microsoft Maia — massive ramp 2025"},
+        ],
+        "challengers": [
+            {"ticker": "ALAB", "name": "Astera Labs", "thesis": "Connectivity ICs (PCIe/CXL/Ethernet) for AI scale-up — small but explosive growth"},
+            {"ticker": "CRDO", "name": "Credo Technology", "thesis": "Active electrical cables (AECs) for AI clusters — alternative to optics for short-reach"},
+        ],
+        "risks": ["NVIDIA's CUDA moat means custom ASICs only economic at hyperscale", "TPU underwhelming vs H100 in some benchmarks"],
+    },
+    {
+        "id": "networking-switches",
+        "name": "AI Networking (Ethernet 800G / InfiniBand)",
+        "category": "Networking",
+        "criticality": 80,
+        "horizon": "2024-2026",
+        "thesis": "GPU clusters need ultra-low-latency networking. NVIDIA owns InfiniBand (Mellanox acquisition). Arista + Cisco fight for Ethernet share. The Ultra Ethernet Consortium aims to displace InfiniBand by 2026.",
+        "supply_concentration": "Duopoly in Ethernet (Arista, Cisco). NVIDIA monopoly in InfiniBand.",
+        "leaders": [
+            {"ticker": "ANET", "name": "Arista Networks", "share": "Hyperscaler #1", "moat": "Cloud Vision software + Broadcom Tomahawk silicon partnership. Meta + MSFT primary AI fabric."},
+            {"ticker": "CSCO", "name": "Cisco", "share": "Enterprise leader", "moat": "Splunk acquisition + Silicon One — competing for AI ethernet"},
+            {"ticker": "NVDA", "name": "NVIDIA (InfiniBand)", "share": "100% IB", "moat": "Spectrum-X Ethernet platform challenging own InfiniBand"},
+        ],
+        "challengers": [
+            {"ticker": "JNPR", "name": "Juniper Networks", "thesis": "HPE acquisition pending — Mist AIOps for AI networks"},
+        ],
+        "risks": ["UEC standardization could commoditize", "Hyperscalers building own switching silicon"],
+    },
+    {
+        "id": "wafers",
+        "name": "300mm Silicon Wafers",
+        "category": "Raw Materials",
+        "criticality": 70,
+        "horizon": "Permanent",
+        "thesis": "Every chip starts as a 300mm wafer. Two Japanese companies make ~70% of high-purity polished wafers. Demand outpaces supply through 2027. Quietly mission-critical.",
+        "supply_concentration": "Duopoly (Japan-heavy)",
+        "leaders": [
+            {"ticker": "3436.T", "name": "SUMCO", "share": "~30%", "moat": "Largest pure-play wafer maker, AI-driven cycle"},
+            {"ticker": "6981.T", "name": "Shin-Etsu Chemical", "share": "~30%", "moat": "World's largest silicon wafer maker, vertically integrated"},
+            {"ticker": "GFS", "name": "GlobalWafers", "share": "~12%", "moat": "Taiwanese leader, Texas plant under construction"},
+        ],
+        "challengers": [],
+        "risks": ["Japan earthquake risk on production", "Demand volatility tied to memory cycles"],
+    },
+    {
+        "id": "test-equipment",
+        "name": "Semiconductor Test (ATE)",
+        "category": "Semiconductor Equipment",
+        "criticality": 75,
+        "horizon": "Permanent",
+        "thesis": "Every AI chip must be tested at wafer + final. Test time scales with chip complexity. AI chips have 10-50x more test cycles than mobile SoCs. Test equipment makers are quietly profiting from this.",
+        "supply_concentration": "Duopoly: Advantest + Teradyne",
+        "leaders": [
+            {"ticker": "6857.T", "name": "Advantest", "share": "~55%", "moat": "Dominates HBM + advanced logic test (NVIDIA, SK Hynix). AI orderbook exploding."},
+            {"ticker": "TER", "name": "Teradyne", "share": "~40%", "moat": "Apple silicon + AMD primary tester. Mobility unit (FLEX) is icing."},
+        ],
+        "challengers": [],
+        "risks": ["Test consolidation could reduce ASP per chip", "Cyclical exposure to total semi capex"],
+    },
+    {
+        "id": "ai-power-substrates",
+        "name": "PCB Substrates (FC-BGA / Build-up)",
+        "category": "Packaging Materials",
+        "criticality": 80,
+        "horizon": "2024-2027",
+        "thesis": "AI GPUs need ultra-high-layer-count substrates (often 20+ layers). FC-BGA substrate is a hidden choke point — supply was tight through 2024. Japanese/Taiwanese duopoly.",
+        "supply_concentration": "Concentrated (3-4 makers)",
+        "leaders": [
+            {"ticker": "4062.T", "name": "Ibiden", "share": "~30% (high-end)", "moat": "Intel + NVIDIA primary substrate supplier. AI-driven 30%+ revenue growth."},
+            {"ticker": "6967.T", "name": "Shinko Electric", "share": "~25%", "moat": "Substrate + lead frame, JIC buyout in progress"},
+            {"ticker": "3037.TW", "name": "Unimicron", "share": "~15%", "moat": "Largest Taiwanese substrate maker"},
+        ],
+        "challengers": [],
+        "risks": ["Glass substrates (Intel) could disrupt 2027+", "Cyclicality"],
+    },
+    {
+        "id": "cooling-liquid",
+        "name": "Liquid / Immersion Cooling",
+        "category": "Infrastructure",
+        "criticality": 70,
+        "horizon": "2024-2028",
+        "thesis": "Above 50kW/rack, air cooling fails. NVIDIA Blackwell rack is 120kW+. Liquid cooling went from optional to mandatory. The leaders are smaller-cap and quietly capturing >100% YoY growth.",
+        "supply_concentration": "Fragmented but concentrating",
+        "leaders": [
+            {"ticker": "VRT", "name": "Vertiv", "share": "Leader", "moat": "Acquired Cooltera, full liquid stack"},
+            {"ticker": "MOD", "name": "Modine Manufacturing", "share": "Growing", "moat": "Datacenter cooling + auto thermal — orderbook 3x"},
+            {"ticker": "BE", "name": "Bloom Energy", "share": "Power+cooling", "moat": "Fuel cells for distributed AI power"},
+        ],
+        "challengers": [
+            {"ticker": "SMCI", "name": "Super Micro", "thesis": "Liquid-cooled rack pioneer (controversial)"},
+        ],
+        "risks": ["Rapid commoditization of cold plates", "Hyperscaler in-house designs"],
+    },
+]
+
+
+@app.get("/ai-bottlenecks")
+def list_ai_bottlenecks():
+    """Get the full curated list of AI value-chain bottlenecks."""
+    return {
+        "bottlenecks": AI_BOTTLENECKS,
+        "categories": sorted({b["category"] for b in AI_BOTTLENECKS}),
+        "count": len(AI_BOTTLENECKS),
+    }
+
+
+@app.get("/ai-bottlenecks/{bottleneck_id}")
+def get_ai_bottleneck(bottleneck_id: str):
+    """Get a single bottleneck with live quotes for its leader stocks."""
+    b = next((x for x in AI_BOTTLENECKS if x["id"] == bottleneck_id), None)
+    if not b:
+        raise HTTPException(status_code=404, detail=f"Unknown bottleneck '{bottleneck_id}'")
+
+    # Enrich with live quotes for leaders + challengers (parallel)
+    all_tickers = []
+    for stock in b.get("leaders", []) + b.get("challengers", []):
+        t = stock.get("ticker", "")
+        if t and t not in all_tickers and not t.startswith(("3711.TW",)) and "(" not in t:
+            all_tickers.append(t)
+
+    quotes_map = {}
+    if all_tickers:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = {pool.submit(_fetch_ticker_quote, t): t for t in all_tickers}
+            for f in as_completed(futures):
+                try:
+                    q = f.result(timeout=8)
+                    if q:
+                        quotes_map[q["ticker"]] = q
+                except Exception:
+                    pass
+
+    # Attach quote to each stock entry
+    enriched = dict(b)
+    enriched["leaders"] = [
+        {**s, "quote": quotes_map.get(s.get("ticker"))} for s in b.get("leaders", [])
+    ]
+    enriched["challengers"] = [
+        {**s, "quote": quotes_map.get(s.get("ticker"))} for s in b.get("challengers", [])
+    ]
+    return _sanitize(enriched)
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
