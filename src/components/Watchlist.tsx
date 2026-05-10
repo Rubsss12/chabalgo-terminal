@@ -87,6 +87,24 @@ export default function Watchlist({ onSelectTicker }: { onSelectTicker?: (t: str
     setLoading(false);
   }, []);
 
+  // Escape key closes the panel
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  // Lock body scroll when watchlist is open (prevents background scrolling)
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (open) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [open]);
+
   useEffect(() => {
     refresh();
     const handler = () => refresh();
@@ -131,17 +149,17 @@ export default function Watchlist({ onSelectTicker }: { onSelectTicker?: (t: str
         )}
       </button>
 
-      {/* Mobile backdrop */}
+      {/* Backdrop — visible on ALL viewports so clicking outside closes */}
       {open && (
         <div
           onClick={() => setOpen(false)}
-          className="fixed inset-0 bg-black/30 z-30 sm:hidden"
+          className="fixed inset-0 bg-black/30 z-[55]"
         />
       )}
 
-      {/* Side panel — full width on mobile, 360px on tablet+ */}
+      {/* Side panel — full width on mobile, 360px on tablet+. z-[60] sits above sticky nav (z-50) so the close button is always reachable */}
       <div
-        className={`fixed top-0 right-0 h-screen w-full sm:w-[360px] bg-card border-l border-border z-40 transition-transform duration-200 ${
+        className={`fixed top-0 right-0 h-screen w-full sm:w-[360px] bg-card border-l border-border z-[60] transition-transform duration-200 ${
           open ? "translate-x-0" : "translate-x-full"
         } shadow-2xl flex flex-col`}
       >
@@ -157,13 +175,17 @@ export default function Watchlist({ onSelectTicker }: { onSelectTicker?: (t: str
                 {avgChange >= 0 ? "+" : ""}{avgChange.toFixed(2)}%
               </span>
             )}
-            <button onClick={() => refresh()} disabled={loading} title="Refresh" className="text-muted hover:text-accent">
+            <button onClick={() => refresh()} disabled={loading} title="Refresh" className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-accent hover:bg-accent/5 transition-colors">
               <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            <button onClick={() => setOpen(false)} className="text-muted hover:text-foreground">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <button
+              onClick={() => setOpen(false)}
+              title="Close (Esc)"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-red hover:bg-red/10 transition-colors border border-border"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
